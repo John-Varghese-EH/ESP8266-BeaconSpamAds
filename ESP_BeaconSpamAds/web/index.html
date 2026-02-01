@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beacon Spam Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Beacon Spam Admin</h1>
+
+  <div class="status">
+    <strong>Status:</strong> Running<br>
+    <strong>SSIDs Loaded:</strong> <span id="ssidCount">...</span><br>
+    <strong>Clients:</strong> <span id="clientCount">...</span><br>
+    <strong>Uptime:</strong> <span id="uptime">...</span>s
+  </div>
+
+  <div class="card">
+    <h2>Settings</h2>
+    <form id="configForm">
+      <label>
+        <input type="checkbox" id="wpa2"> Enable WPA2 (Encrypted Networks)
+      </label>
+      <label>
+        <input type="checkbox" id="appendSpaces"> Append Spaces (Performance Optimization)
+      </label>
+      <label>Beacon Interval (ms):</label>
+      <input type="number" id="beaconInterval" value="100">
+      <br>
+      <button type="button" onclick="saveConfig()">Save Settings</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>SSID List</h2>
+    <p>Enter one SSID per line. Max 32 chars.</p>
+    <textarea id="ssidList"></textarea>
+    <br>
+    <button type="button" onclick="saveSSIDs()">Save SSIDs</button>
+  </div>
+
+  <div class="card">
+    <h2>System</h2>
+    <button class="danger" onclick="reboot()">Reboot ESP</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

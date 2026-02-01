@@ -1,0 +1,82 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  background: #f4f4f9;
+  color: #333;
+}
+
+h1 {
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 10px;
+  color: #2c3e50;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  color: #34495e;
+}
+
+label {
+  font-weight: bold;
+  display: block;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+textarea {
+  width: 100%;
+  height: 300px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: monospace;
+  box-sizing: border-box; /* Fix padding issues */
+}
+
+input[type="number"], select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+  font-size: 1rem;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+button.danger {
+  background: #dc3545;
+}
+
+button.danger:hover {
+  background: #a71d2a;
+}
+
+.status {
+  margin-bottom: 15px;
+  padding: 15px;
+  background: #e9ecef;
+  border-radius: 4px;
+  border-left: 5px solid #28a745;
+}
