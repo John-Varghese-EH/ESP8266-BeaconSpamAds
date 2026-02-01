@@ -17,22 +17,31 @@ This project combines the best features of previous iterations to turn an ESP826
 -   **Captive Portal**: Automatic redirect for connected users to your custom HTML page.
 -   **Status LED**: Blinks to indicate the system is running and spamming.
 
+## Quick Customization (SSIDs)
+You can easily change the list of fake networks without writing code:
+1.  Open `ESP_BeaconSpamAds/data/ssids.txt`.
+2.  Add or remove names (one per line).
+3.  **Upload the changes**:
+    *   **Arduino IDE**: Use "LittleFS Data Upload" tool.
+    *   **PlatformIO**: Run "Upload Filesystem Image" task.
+    *   **Web Admin**: Go to `/admin` after flashing and paste your list there.
+
 ## Installation
-1.  Open `ESP8266_BeaconSpam_Merged/ESP8266_BeaconSpam_Merged.ino` in Arduino IDE.
-2.  **Install LittleFS**: Ensure you have the ESP8266 LittleFS filesystem uploader installed or just allow the sketch to format it on first run (might take a few seconds).
-3.  Select your ESP8266 board (e.g., NodeMCU 1.0).
-4.  Click **Upload**.
+### Method 1: Arduino IDE
+1.  Open `ESP_BeaconSpamAds/ESP_BeaconSpamAds.ino`.
+2.  (Optional) Run `python utils/build_web.py` if you modified the web interface.
+3.  Select Board (NodeMCU 1.0) and Upload.
+4.  **Important**: Upload the filesystem data using the "ESP8266 LittleFS Data Upload" plugin to load the default SSIDs.
+
+### Method 2: PlatformIO (Recommended)
+1.  Open this project folder in VS Code with PlatformIO installed.
+2.  Click the **PlatformIO Alien icon** on the left.
+3.  Under `nodemcuv2`, click **Upload Filesystem Image** (to load SSIDs).
+4.  Click **Upload** (to flash firmware).
 
 ## Configuration
-**NEW:** You no longer need to edit code to change settings!
-1.  Connect to the **"Connect me!"** WiFi network.
-2.  Open a browser and go to `http://192.168.4.1/admin`.
-3.  **Dashboard**:
-    *   **Settings**: Toggle WPA2, Append Spaces, or change Beacon Interval.
-    *   **SSID List**: Edit the text box to add/remove SSIDs (one per line). Click "Save SSIDs".
-    *   **Reboot**: Restart the device to apply major changes if needed.
-
-The SSIDs and Settings are saved to the chip's storage, so they will be there next time you turn it on.
+**Runtime Config**: Connect to the **"Connect me!"** network and visit `http://192.168.4.1/admin`.
+**Manual Config**: Edit `data/ssids.txt` before uploading via LittleFS.
 
 ## Usage
 1.  Power on the ESP8266.
@@ -46,10 +55,9 @@ If you want to customize the look of the Admin Panel or the Captive Portal page:
 1.  Navigate to `ESP_BeaconSpamAds/web/`.
 2.  Edit `index.html` (Admin), `portal.html` (Ad Page), `style.css`, or `app.js`.
 3.  **Compile the changes**:
-    -   You need Python installed.
     -   Run: `python utils/build_web.py` from the project root.
     -   This updates `web_index.h` automatically.
-4.  Re-upload the sketch to the ESP8266.
+4.  Re-upload the firmware.
 
 ## Legal Disclaimer
 **Use responsibly.** This tool is for educational and testing purposes only. Ensure you have permission to broadcast on the frequencies and environment you are in. Do not use this to disrupt legitimate services.

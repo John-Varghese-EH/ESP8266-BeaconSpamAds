@@ -4,7 +4,7 @@
 ESP Beacon Spam Web Builder
 ==============================
 Converts web source files (HTML, CSS, JS) from web/ folder into a single
-embedded PROGMEM header file (web_index.h) for the ESP8266.
+embedded PROGMEM header file (web_index.h) for the ESP.
 
 Usage:
     python utils/build_web.py
@@ -50,11 +50,12 @@ def read_file(filepath: Path) -> str:
     with open(filepath, 'r', encoding='utf-8') as f:
         return f.read()
 
-def inline_resources(html: str, web_dir: Path) -> str:
+def inline_resources(html: str, base_dir: Path) -> str:
     # Inline CSS
     def replace_css(match):
         css_file = match.group(1)
-        css_path = web_dir / css_file
+        # Try finding in the same directory as the HTML file first
+        css_path = base_dir / css_file
         if css_path.exists():
             print(f"  [+] Inlining: {css_file}")
             return f"<style>{minify_css(read_file(css_path))}</style>"
@@ -66,7 +67,7 @@ def inline_resources(html: str, web_dir: Path) -> str:
     # Inline JS
     def replace_js(match):
         js_file = match.group(1)
-        js_path = web_dir / js_file
+        js_path = base_dir / js_file
         if js_path.exists():
             print(f"  [+] Inlining: {js_file}")
             return f"<script>{minify_js(read_file(js_path))}</script>"
@@ -92,6 +93,7 @@ const char portal_html[] PROGMEM = R"rawliteral({portal_html})rawliteral";
 def main():
     root = get_project_root()
     web_dir = root / "web"
+    admin_dir = web_dir / "admin"
     out_file = root / "web_index.h"
     
     if not web_dir.exists():
@@ -101,17 +103,25 @@ def main():
     print(f"Building web assets from {web_dir}...")
     
     # Process Admin Page
-    print("Processing Admin Page (index.html)...")
-    admin_html = read_file(web_dir / "index.html")
-    admin_html = inline_resources(admin_html, web_dir)
-    admin_html = minify_html(admin_html)
+    print("Processing Admin Page (admin/index.html)...")
+    if (admin_dir / "index.html").exists():
+        admin_html = read_file(admin_dir / "index.html")
+        # Pass admin_dir so it finds style.css/app.js in there
+        admin_html = inline_resources(admin_html, admin_dir)
+        admin_html = minify_html(admin_html)
+    else:
+        print("[ERROR] admin/index.html not found!")
+        sys.exit(1)
     
     # Process Portal Page
     print("Processing Portal Page (portal.html)...")
-    portal_html = read_file(web_dir / "portal.html")
-    # Portal usually doesn't have external resources in this simple case, but good to be safe
-    portal_html = inline_resources(portal_html, web_dir) 
-    portal_html = minify_html(portal_html)
+    if (web_dir / "portal.html").exists():
+        portal_html = read_file(web_dir / "portal.html")
+        portal_html = inline_resources(portal_html, web_dir) 
+        portal_html = minify_html(portal_html)
+    else:
+         print("[ERROR] portal.html not found!")
+         sys.exit(1)
     
     # Write Header
     with open(out_file, 'w', encoding='utf-8') as f:
