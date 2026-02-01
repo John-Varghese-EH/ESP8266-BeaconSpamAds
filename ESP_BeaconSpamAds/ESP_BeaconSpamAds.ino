@@ -1,19 +1,23 @@
 /*
   ESP8266 Beacon Spam & Captive Portal Ads (Merged Version)
-  
+
   Merged and improved by Google Deemind's Antigravity
   Original Concepts by:
   - V1: Spacehuhn (github.com/spacehuhn)
   - V2: John Varghese (github.com/John-Varghese-EH)
 */
 
-#include "Settings.h"
 #include "BeaconSpam.h"
+#include "BleSpam.h"
 #include "CaptivePortal.h"
+#include "Settings.h"
 #include "Storage.h"
 
 BeaconSpam beaconSpam;
 CaptivePortal captivePortal;
+#ifdef ESP32
+BleSpam bleSpam;
+#endif
 
 void setup() {
   Serial.begin(115200);
@@ -24,19 +28,31 @@ void setup() {
   beaconSpam.setup();
   captivePortal.setup();
 
-  Serial.println(F("System Started. Broadcasting beacons and hosting portal..."));
+#ifdef ESP32
+  if (storage.config.enableBLE) {
+    bleSpam.setup();
+  }
+#endif
+
+  Serial.println(
+      F("System Started. Broadcasting beacons and hosting portal..."));
   Serial.println(F("Admin Panel available at http://192.168.4.1/admin"));
-  
+
   pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void loop() {
   beaconSpam.update();
   captivePortal.update();
-  
+#ifdef ESP32
+  if (storage.config.enableBLE) {
+    bleSpam.update();
+  }
+#endif
+
   // Blink LED to show activity
   static uint32_t lastBlink = 0;
-  if(millis() - lastBlink > 500) { // Blink every 500ms
+  if (millis() - lastBlink > 500) { // Blink every 500ms
     lastBlink = millis();
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
   }

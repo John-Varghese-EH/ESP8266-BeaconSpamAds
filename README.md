@@ -1,7 +1,7 @@
 # ESP8266 Beacon Spam & Captive Portal Ads
 
 ## Overview
-This project combines the best features of previous iterations to turn an ESP8266 into a powerful tool that:
+This project combines the best features of previous iterations to turn an **ESP8266 or ESP32** into a powerful tool that:
 1.  **Broadcasts fake WiFi SSIDs** (Beacon Spam) to attract attention.
 2.  **Creates a "Connect me!" Access Point** with a Captive Portal.
 3.  **Serves an Ad/Message Page** to anyone who connects.
@@ -16,6 +16,7 @@ This project combines the best features of previous iterations to turn an ESP826
 -   **WPA2 Support**: Toggleable option to make fake networks appear encrypted.
 -   **Captive Portal**: Automatic redirect for connected users to your custom HTML page.
 -   **Status LED**: Blinks to indicate the system is running and spamming.
+-   **BLE Spam (ESP32 Only)**: Broadcasts Bluetooth Low Energy beacons to spam nearby devices.
 
 ## Quick Customization (SSIDs)
 You can easily change the list of fake networks without writing code:
@@ -30,13 +31,13 @@ You can easily change the list of fake networks without writing code:
 ### Method 1: Arduino IDE
 1.  Open `ESP_BeaconSpamAds/ESP_BeaconSpamAds.ino`.
 2.  (Optional) Run `python utils/build_web.py` if you modified the web interface.
-3.  Select Board (NodeMCU 1.0) and Upload.
-4.  **Important**: Upload the filesystem data using the "ESP8266 LittleFS Data Upload" plugin to load the default SSIDs.
+3.  Select Board (**NodeMCU 1.0** for ESP8266 or **ESP32 Dev Module** for ESP32) and Upload.
+4.  **Important**: Upload the filesystem data (LittleFS) to load the default SSIDs.
 
 ### Method 2: PlatformIO (Recommended)
 1.  Open this project folder in VS Code with PlatformIO installed.
 2.  Click the **PlatformIO Alien icon** on the left.
-3.  Under `nodemcuv2`, click **Upload Filesystem Image** (to load SSIDs).
+3.  Under `nodemcuv2` (for ESP8266) or `esp32dev` (for ESP32), click **Upload Filesystem Image** (to load SSIDs).
 4.  Click **Upload** (to flash firmware).
 
 ## Configuration

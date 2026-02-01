@@ -7,6 +7,7 @@ function loadData() {
             document.getElementById('clientCount').innerText = data.clientCount;
             document.getElementById('wpa2').checked = data.wpa2;
             document.getElementById('appendSpaces').checked = data.appendSpaces;
+            document.getElementById('enableBLE').checked = data.enableBLE;
             document.getElementById('beaconInterval').value = data.beaconInterval;
             document.getElementById('ssidList').value = data.ssids;
         })
@@ -17,6 +18,7 @@ function saveConfig() {
     const data = {
         wpa2: document.getElementById('wpa2').checked,
         appendSpaces: document.getElementById('appendSpaces').checked,
+        enableBLE: document.getElementById('enableBLE').checked,
         beaconInterval: parseInt(document.getElementById('beaconInterval').value)
     };
 

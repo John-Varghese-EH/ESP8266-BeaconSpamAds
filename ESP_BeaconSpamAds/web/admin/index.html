@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Beacon Spam Admin</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <h1>Beacon Spam Admin</h1>
 
@@ -24,6 +26,9 @@
       </label>
       <label>
         <input type="checkbox" id="appendSpaces"> Append Spaces (Performance Optimization)
+      </label>
+      <label>
+        <input type="checkbox" id="enableBLE"> Enable BLE Spam (ESP32 Only)
       </label>
       <label>Beacon Interval (ms):</label>
       <input type="number" id="beaconInterval" value="100">
@@ -47,4 +52,5 @@
 
   <script src="app.js"></script>
 </body>
+
 </html>
