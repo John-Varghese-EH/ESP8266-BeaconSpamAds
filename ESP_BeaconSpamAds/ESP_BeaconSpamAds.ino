@@ -1,10 +1,6 @@
 /*
   ESP8266 Beacon Spam & Captive Portal Ads (Merged Version)
-
-  Merged and improved by Google Deemind's Antigravity
-  Original Concepts by:
-  - V1: Spacehuhn (github.com/spacehuhn)
-  - V2: John Varghese (github.com/John-Varghese-EH)
+  -John Varghese (github.com/John-Varghese-EH)
 */
 
 #include "BeaconSpam.h"

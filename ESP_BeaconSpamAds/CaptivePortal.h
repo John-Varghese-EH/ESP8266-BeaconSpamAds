@@ -1,6 +1,7 @@
 #ifndef CAPTIVE_PORTAL_H
 #define CAPTIVE_PORTAL_H
 
+#include <DNSServer.h>
 #ifdef ESP32
 #include <ESPmDNS.h>
 #include <WebServer.h>
@@ -27,6 +28,8 @@ private:
   static void handleSaveConfig();
   static void handleGetData();
   static void handleReboot();
+
+  DNSServer dnsServer;
 };
 
 #endif

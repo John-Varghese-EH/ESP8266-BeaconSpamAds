@@ -11,12 +11,21 @@ ESP8266WebServer server(80);
 void CaptivePortal::setup() {
   // start WiFi
   WiFi.mode(WIFI_AP_STA); // AP for Portal, STA for Beacon Spam
+
+  IPAddress apIP(192, 168, 4, 1);
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+
   WiFi.softAP(
       "Connect me!"); // We could make this configurable too if we wanted
+
+  // Setup DNS for Captive Portal
+  dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+  dnsServer.start(53, "*", WiFi.softAPIP());
 
   server.on("/generate_204", handleRoot);
   server.on("/hotspot-detect.html", handleRoot);
   server.on("/connecttest.txt", handleRoot);
+  server.on("/ncsi.txt", handleRoot); // Windows
   server.on("/", handleRoot);
 
   // Admin Routes
@@ -30,16 +39,23 @@ void CaptivePortal::setup() {
   server.begin();
 }
 
-void CaptivePortal::update() { server.handleClient(); }
+void CaptivePortal::update() {
+  dnsServer.processNextRequest();
+  server.handleClient();
+}
 
-void CaptivePortal::handleRoot() { server.send(200, "text/html", portal_html); }
+void CaptivePortal::handleRoot() {
+  if (server.hostHeader() != "192.168.4.1") {
+    server.sendHeader("Location", String("http://192.168.4.1/"), true);
+    server.send(302, "text/plain", "");
+    return;
+  }
+  server.send(200, "text/html", portal_html);
+}
 
 void CaptivePortal::handleNotFound() {
-  // If trying to access admin IPs directly, let it through? No, safer to just
-  // redirect everything unless it matches specific routes
-  server.sendHeader("Location", String("http://") + WiFi.softAPIP().toString(),
-                    true);
-  server.send(302, "text/plain", "");
+  server.sendHeader("Location", String("http://192.168.4.1/"), true);
+  server.send(302, "text/plain", "Redirecting to Captive Portal...");
 }
 
 // Admin Handlers
