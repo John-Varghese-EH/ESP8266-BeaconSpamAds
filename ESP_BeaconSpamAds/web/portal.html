@@ -4,48 +4,206 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Special Offer</title>
+    <title>ESP8266 Beacon Spam</title>
     <style>
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --btn-gradient: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px 35px;
+            max-width: 420px;
+            width: 100%;
             text-align: center;
-            margin: 20px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 15px;
         }
 
         h1 {
-            color: #2c3e50;
+            font-size: 1.6rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text);
         }
 
-        img {
-            max-width: 100%;
-            height: auto;
-            margin-top: 20px;
+        .description {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
         }
 
-        a {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
-            background: #2980b9;
+        .features {
+            text-align: left;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(88, 166, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(88, 166, 255, 0.2);
+        }
+
+        .features div {
+            padding: 6px 0;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .features span {
+            margin-right: 8px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px 24px;
+            background: var(--btn-gradient);
             color: white;
             text-decoration: none;
-            border-radius: 5px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        a:hover {
-            background: #3498db;
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(35, 134, 54, 0.4);
+        }
+
+        .countdown {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            display: none;
+        }
+
+        .countdown span {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .admin-link {
+            margin-top: 25px;
+            font-size: 0.75rem;
+            color: var(--border);
+        }
+
+        .admin-link a {
+            color: var(--border);
+            text-decoration: none;
+        }
+
+        .admin-link a:hover {
+            color: var(--text-dim);
+        }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
         }
     </style>
 </head>
 
 <body>
-    <h1>Welcome to Free Wi-Fi!</h1>
-    <p>Don't miss our limited-time special offer:</p>
-    <img src="https://via.placeholder.com/300x150.png?text=Ad+Banner" alt="Awesome Product" />
-    <p><a href="https://example.com" target="_blank" rel="noopener">Click here to learn more!</a></p>
-    <br><br>
-    <p style="font-size:10px; color:#ccc;">Admin? Go to <a href="/admin"
-            style="display:inline; padding:0; background:none; color:#bbb;">/admin</a> to configure.</p>
+    <div class="container">
+        <div class="logo">⚡</div>
+        <h1 id="headline">ESP8266 Beacon Spam</h1>
+        <p class="description" id="description">Open-source WiFi beacon spammer & captive portal for ESP8266/ESP32</p>
+
+        <div class="features">
+            <div><span>📡</span> 50+ fake WiFi networks</div>
+            <div><span>🌐</span> Customizable captive portal</div>
+            <div><span>⚙️</span> Web-based admin panel</div>
+            <div><span>📱</span> BLE spam (ESP32)</div>
+        </div>
+
+        <a href="/api/redirect" class="btn" id="connectBtn">View on GitHub</a>
+        <div class="countdown" id="countdown">
+            Redirecting in <span id="timer">5</span> seconds...
+        </div>
+        <div class="admin-link">
+            <a href="/admin">Admin Panel</a>
+        </div>
+    </div>
+
+    <footer>
+        Made with ❤️ by <a href="https://github.com/John-Varghese-EH" target="_blank">John-Varghese-EH</a>
+    </footer>
+
+    <script>
+        fetch('/api/public_data')
+            .then(res => res.json())
+            .then(data => {
+                if (data.advertisingHeadline) {
+                    document.getElementById('headline').innerText = data.advertisingHeadline;
+                }
+                if (data.advertisingDescription) {
+                    document.getElementById('description').innerText = data.advertisingDescription;
+                }
+                if (data.buttonText) {
+                    document.getElementById('connectBtn').innerText = data.buttonText;
+                }
+
+                // Auto-redirect countdown
+                if (data.autoRedirectDelay && data.autoRedirectDelay > 0) {
+                    let secs = data.autoRedirectDelay;
+                    const countdownEl = document.getElementById('countdown');
+                    const timerEl = document.getElementById('timer');
+                    countdownEl.style.display = 'block';
+                    timerEl.innerText = secs;
+
+                    const interval = setInterval(() => {
+                        secs--;
+                        timerEl.innerText = secs;
+                        if (secs <= 0) {
+                            clearInterval(interval);
+                            window.location.href = '/api/redirect';
+                        }
+                    }, 1000);
+                }
+            })
+            .catch(e => console.log('Error loading data:', e));
+    </script>
 </body>
 
 </html>

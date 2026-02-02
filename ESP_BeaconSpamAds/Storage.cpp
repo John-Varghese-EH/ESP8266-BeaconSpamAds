@@ -1,4 +1,5 @@
 #include "Storage.h"
+#include "Settings.h"
 
 Storage storage;
 
@@ -28,8 +29,30 @@ void Storage::setup() {
 void Storage::createDefaultConfig() {
   config.wpa2 = false;
   config.appendSpaces = true;
-  config.beaconInterval = 100;
-  config.enableBLE = false;
+  config.beaconInterval = DEFAULT_BEACON_INTERVAL;
+  config.enableBLE = DEFAULT_ENABLE_BLE;
+
+  // Admin Defaults
+  strlcpy(config.adminUser, DEFAULT_ADMIN_USER, sizeof(config.adminUser));
+  strlcpy(config.adminPass, DEFAULT_ADMIN_PASS, sizeof(config.adminPass));
+
+  // Portal Advertising Defaults
+  strlcpy(config.advertisingHeadline, DEFAULT_HEADLINE,
+          sizeof(config.advertisingHeadline));
+  strlcpy(config.advertisingDescription, DEFAULT_DESCRIPTION,
+          sizeof(config.advertisingDescription));
+  strlcpy(config.buttonText, DEFAULT_BUTTON_TEXT, sizeof(config.buttonText));
+  strlcpy(config.redirectUrl, DEFAULT_REDIRECT_URL, sizeof(config.redirectUrl));
+  config.autoRedirectDelay = DEFAULT_AUTO_REDIRECT_DELAY;
+
+  // AP Defaults
+  strlcpy(config.apName, DEFAULT_AP_NAME, sizeof(config.apName));
+  config.hideAP = DEFAULT_HIDE_AP;
+
+  // Advanced Beacon Defaults
+  config.wifiChannel = 1; // Default channel 1
+  config.randomizeMAC = false;
+
   saveConfig();
 }
 

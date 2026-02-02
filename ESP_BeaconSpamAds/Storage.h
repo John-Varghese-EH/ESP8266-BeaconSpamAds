@@ -13,7 +13,25 @@ struct Config {
   bool appendSpaces;
   int beaconInterval; // ms, default 100
   bool enableBLE;     // ESP32 only
-                      // We can add channel selection bitmask later if needed
+
+  // Admin Settings
+  char adminUser[32];
+  char adminPass[32];
+
+  // Portal Advertising Settings
+  char advertisingHeadline[64];     // Main headline
+  char advertisingDescription[128]; // Sub-text/description
+  char buttonText[32];   // Button label (e.g., "Connect", "Get Offer")
+  char redirectUrl[128]; // Where to redirect on button click
+  int autoRedirectDelay; // Seconds before auto-redirect (0 = disabled)
+
+  // Access Point Settings
+  char apName[32]; // Name of the captive portal AP
+  bool hideAP;     // Hide the AP from SSID lists
+
+  // Advanced Beacon Settings
+  uint8_t wifiChannel; // Channel for beacons (1-14)
+  bool randomizeMAC;   // Randomize source MAC addresses
 };
 
 class Storage {

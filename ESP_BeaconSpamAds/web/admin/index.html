@@ -9,46 +9,125 @@
 </head>
 
 <body>
-  <h1>Beacon Spam Admin</h1>
+  <h1>⚡ Beacon Spam</h1>
 
   <div class="status">
-    <strong>Status:</strong> Running<br>
-    <strong>SSIDs Loaded:</strong> <span id="ssidCount">...</span><br>
-    <strong>Clients:</strong> <span id="clientCount">...</span><br>
+    <strong>Status:</strong> <span id="statusText">Running</span><br>
+    <strong>SSIDs:</strong> <span id="ssidCount">...</span> |
+    <strong>Clients:</strong> <span id="clientCount">...</span> |
     <strong>Uptime:</strong> <span id="uptime">...</span>s
   </div>
 
-  <div class="card">
-    <h2>Settings</h2>
-    <form id="configForm">
-      <label>
-        <input type="checkbox" id="wpa2"> Enable WPA2 (Encrypted Networks)
-      </label>
-      <label>
-        <input type="checkbox" id="appendSpaces"> Append Spaces (Performance Optimization)
-      </label>
-      <label>
-        <input type="checkbox" id="enableBLE"> Enable BLE Spam (ESP32 Only)
-      </label>
-      <label>Beacon Interval (ms):</label>
-      <input type="number" id="beaconInterval" value="100">
-      <br>
-      <button type="button" onclick="saveConfig()">Save Settings</button>
-    </form>
+  <!-- Theme Toggle -->
+  <div class="theme-toggle">
+    <button onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
   </div>
 
+  <!-- Connected Clients -->
   <div class="card">
-    <h2>SSID List</h2>
-    <p>Enter one SSID per line. Max 32 chars.</p>
-    <textarea id="ssidList"></textarea>
+    <div class="section-title">Connected Clients</div>
+    <div id="clientsList" style="font-family: monospace; font-size: 0.9rem;"></div>
+    <button type="button" onclick="refreshClients()" style="margin-top:10px;">🔄 Refresh</button>
+  </div>
+
+  <!-- Access Point -->
+  <div class="card">
+    <div class="section-title">Access Point</div>
+    <label>AP Name (Network Name)</label>
+    <input type="text" id="apName" placeholder="Free WiFi">
+    <div class="hint">The name users see when scanning for Wi-Fi networks</div>
+    <label><input type="checkbox" id="hideAP"> Hide AP from network lists</label>
+    <div class="hint">Experimental: May not work on all devices</div>
+  </div>
+
+  <!-- Portal Advertising -->
+  <div class="card">
+    <div class="section-title">Portal Advertising</div>
+    <label>Headline</label>
+    <input type="text" id="advertisingHeadline" placeholder="Welcome to Free Wi-Fi!">
+    <label>Description</label>
+    <input type="text" id="advertisingDescription" placeholder="Click below to get exclusive access!">
+    <label>Button Text</label>
+    <input type="text" id="buttonText" placeholder="Connect Now">
+    <label>Redirect URL</label>
+    <input type="text" id="redirectUrl" placeholder="https://github.com/John-Varghese-EH">
+    <div class="hint">Where users go after clicking the button</div>
+    <label>Auto-Redirect Delay (seconds)</label>
+    <input type="number" id="autoRedirectDelay" value="0" min="0">
+    <div class="hint">0 = disabled, users must click the button</div>
+  </div>
+
+  <!-- Spam Settings -->
+  <div class="card">
+    <div class="section-title">Spam Settings</div>
+    <label><input type="checkbox" id="wpa2"> Enable WPA2 (Encrypted Networks)</label>
+    <label><input type="checkbox" id="appendSpaces"> Append Spaces (Performance)</label>
+    <label><input type="checkbox" id="enableBLE"> Enable BLE Spam (ESP32 Only)</label>
+    <label><input type="checkbox" id="randomizeMAC"> Randomize MAC Addresses</label>
+    <div class="hint">Generate random source MAC for each beacon</div>
+    <label>Beacon Interval (ms)</label>
+    <input type="number" id="beaconInterval" value="100" min="10">
+    <div class="hint">Lower = more spam, higher battery usage</div>
+    <label>WiFi Channel (1-14)</label>
+    <input type="number" id="wifiChannel" value="1" min="1" max="14">
+    <div class="hint">Channel to broadcast beacons on</div>
     <br>
-    <button type="button" onclick="saveSSIDs()">Save SSIDs</button>
+    <button type="button" onclick="saveConfig()">💾 Save All Settings</button>
   </div>
 
+  <!-- SSID List -->
   <div class="card">
-    <h2>System</h2>
-    <button class="danger" onclick="reboot()">Reboot ESP</button>
+    <div class="section-title">SSID List</div>
+    <p style="color: var(--text-secondary); margin: 0 0 10px 0; font-size: 0.9rem;">One SSID per line. Max 32 characters
+      each.</p>
+    <div style="margin-bottom: 10px;">
+      <button type="button" onclick="generateRandomSSIDs()" style="font-size: 0.85rem; padding: 6px 12px;">🎲 Generate
+        Random</button>
+      <button type="button" onclick="loadPreset('funny')" style="font-size: 0.85rem; padding: 6px 12px;">😂
+        Funny</button>
+      <button type="button" onclick="loadPreset('scary')" style="font-size: 0.85rem; padding: 6px 12px;">👻
+        Scary</button>
+      <button type="button" onclick="loadPreset('memes')" style="font-size: 0.85rem; padding: 6px 12px;">🐸
+        Memes</button>
+    </div>
+    <textarea id="ssidList" placeholder="FBI Surveillance Van&#10;Free WiFi&#10;Definitely Not Malware"></textarea>
+    <br>
+    <button type="button" onclick="saveSSIDs()">💾 Save SSIDs</button>
   </div>
+
+  <!-- Export/Import -->
+  <div class="card">
+    <div class="section-title">Backup & Restore</div>
+    <p style="color: var(--text-secondary); margin: 0 0 10px 0; font-size: 0.9rem;">Export or import all settings
+      including SSIDs.</p>
+    <button type="button" onclick="exportConfig()">📤 Export Config</button>
+    <button type="button" onclick="document.getElementById('importFile').click()">📥 Import Config</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
+  </div>
+
+  <!-- Admin Credentials -->
+  <div class="card">
+    <div class="section-title">Admin Credentials</div>
+    <p style="color: var(--text-secondary); margin: 0 0 10px 0; font-size: 0.9rem;">Change the login for this admin
+      panel.</p>
+    <label>Username</label>
+    <input type="text" id="adminUser" placeholder="admin">
+    <label>Password</label>
+    <input type="password" id="adminPass" placeholder="••••••••">
+    <br>
+    <button type="button" onclick="saveCredentials()">🔐 Update Credentials</button>
+  </div>
+
+  <!-- System -->
+  <div class="card">
+    <div class="section-title">System</div>
+    <button class="danger" onclick="reboot()">🔄 Reboot ESP</button>
+  </div>
+
+  <footer>
+    <strong>ESP8266 Beacon Spam</strong><br>
+    Made with ❤️ by <a href="https://github.com/John-Varghese-EH" target="_blank">John-Varghese-EH</a>
+  </footer>
 
   <script src="app.js"></script>
 </body>
