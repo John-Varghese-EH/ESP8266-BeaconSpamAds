@@ -3,10 +3,20 @@
 #include "web_index.h"
 
 #ifdef ESP32
+#include <esp_wifi.h>
 WebServer server(80);
 #else
+extern "C" {
+#include <user_interface.h>
+void wifi_softap_deauth(uint8 mac[6]); // Explicit prototype
+}
 ESP8266WebServer server(80);
 #endif
+
+// Init static members
+IPAddress CaptivePortal::pendingDeauthIP;
+unsigned long CaptivePortal::deauthTime = 0;
+bool CaptivePortal::deauthActive = false;
 
 // ===== Security Configuration =====
 #define MAX_FAILED_ATTEMPTS 5    // Max failed login attempts before lockout
@@ -76,6 +86,24 @@ String CaptivePortal::sanitizeInput(const String &input, size_t maxLen) {
   result.replace("'", "&#39;");
   result.replace("\\", "\\\\");
   return result;
+}
+
+// Deep Link: Find custom URL for SSID (format: "SSID|https://url.com")
+String CaptivePortal::getDeepLinkUrl(const String &ssidName) {
+  for (size_t i = 0; i < storage.ssids.size(); i++) {
+    String entry = storage.ssids[i];
+    int pipeIdx = entry.indexOf('|');
+    if (pipeIdx > 0) {
+      String entrySSID = entry.substring(0, pipeIdx);
+      entrySSID.trim();
+      if (entrySSID.equals(ssidName)) {
+        String url = entry.substring(pipeIdx + 1);
+        url.trim();
+        return url;
+      }
+    }
+  }
+  return ""; // No deep link found
 }
 
 bool CaptivePortal::authenticateAdmin() {
@@ -177,6 +205,19 @@ void CaptivePortal::setup() {
   server.on("/api/export", handleExportConfig);
   server.on("/api/import", HTTP_POST, handleImportConfig);
 
+  // Portal HTML Editor API
+  server.on("/api/portal_html", handleGetPortalHTML);
+  server.on("/api/save_portal_html", HTTP_POST, handleSavePortalHTML);
+  server.on("/api/reset_portal_html", HTTP_POST, handleResetPortalHTML);
+  server.on("/content", handleCustomContent);
+
+  // CNA Breakout Routes
+  server.on("/hotspot-detect.html", handleAppleCaptivePortal);
+  server.on("/library/test/success.html", handleAppleCaptivePortal);
+  server.on("/success.txt",
+            []() { server.send(200, "text/plain", "success"); });
+  server.on("/disconnect", handleDisconnect);
+
   server.onNotFound(handleNotFound);
   server.begin();
 }
@@ -184,15 +225,210 @@ void CaptivePortal::setup() {
 void CaptivePortal::update() {
   dnsServer.processNextRequest();
   server.handleClient();
+
+  if (deauthActive && millis() > deauthTime) {
+    deauthClient(pendingDeauthIP);
+    deauthActive = false;
+  }
+}
+
+void CaptivePortal::handleAppleCaptivePortal() {
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "-1");
+  server.send(
+      200, "text/html",
+      "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
+}
+
+void CaptivePortal::handleDisconnect() {
+  pendingDeauthIP = server.client().remoteIP();
+  deauthTime = millis() + 1500; // Wait 1.5s for redirect to start
+  deauthActive = true;
+  server.send(200, "text/plain", "Disconnecting...");
+}
+
+void CaptivePortal::deauthClient(IPAddress ip) {
+  // Find MAC from IP and deauth
+  // This requires iterating the station list
+  uint8_t mac[6] = {0, 0, 0, 0, 0, 0};
+  bool found = false;
+
+#ifdef ESP32
+  wifi_sta_list_t stationList;
+  tcpip_adapter_sta_list_t adapterList;
+  esp_wifi_ap_get_sta_list(&stationList);
+  tcpip_adapter_get_sta_list(&stationList, &adapterList);
+  for (int i = 0; i < adapterList.num; i++) {
+    tcpip_adapter_sta_info_t station = adapterList.sta[i];
+    if (station.ip.addr == ip) {
+      memcpy(mac, station.mac, 6);
+      found = true;
+      break;
+    }
+  }
+  if (found)
+    esp_wifi_deauth_sta(mac);
+
+#else
+  struct station_info *stat_info = wifi_softap_get_station_info();
+  struct station_info *head = stat_info; // Keep head to free later
+  while (stat_info != NULL) {
+    if (stat_info->ip.addr == (uint32_t)ip) {
+      memcpy(mac, stat_info->bssid, 6);
+      found = true;
+      // Don't break yet, need to finish for cleanup? No, we can just use head.
+      break;
+    }
+    stat_info = STAILQ_NEXT(stat_info, next);
+  }
+  wifi_softap_free_station_info(); // Always free the list head!
+
+  if (found)
+    wifi_softap_deauth(mac);
+#endif
 }
 
 void CaptivePortal::handleRoot() {
   if (server.hostHeader() != "192.168.4.1") {
     server.sendHeader("Location", String("http://192.168.4.1/"), true);
-    server.send(302, "text/plain", "");
+    server.send(302, "text/html", "");
     return;
   }
-  server.send(200, "text/html", portal_html);
+
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "0");
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "text/html", "");
+
+  auto send = [&](String s) { server.sendContent(s); };
+
+  // 1. Header & Styles
+  send(F("<!DOCTYPE html><html lang='en'><head>"
+         "<meta charset='UTF-8'><meta name='viewport' "
+         "content='width=device-width,initial-scale=1'>"
+         "<title>ESP Beacon Spam</title><style>"
+         ":root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--"
+         "dim:#8b949e;--accent:#58a6ff;--btn:linear-gradient(135deg,#238636,#"
+         "2ea043)}"
+         "*{box-sizing:border-box;margin:0;padding:0}"
+         "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe "
+         "UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-"
+         "height:100vh;display:flex;flex-direction:column;justify-content:"
+         "center;align-items:center;padding:20px}"
+         ".c{background:var(--card);border:1px solid "
+         "var(--border);border-radius:16px;padding:30px;max-width:380px;width:"
+         "100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.4)}"
+         ".logo{font-size:40px;margin-bottom:10px}"
+         "h1{font-size:1.4rem;margin-bottom:8px}"
+         ".desc{color:var(--dim);font-size:.9rem;line-height:1.5;margin-bottom:"
+         "18px}"
+         ".f{text-align:left;margin-bottom:18px;padding:10px "
+         "14px;background:rgba(88,166,255,.08);border-radius:8px;border:1px "
+         "solid rgba(88,166,255,.15)}"
+         ".f div{padding:4px 0;font-size:.85rem;color:var(--dim)}"
+         ".f span{margin-right:8px}"
+         ".btn{display:block;width:100%;padding:14px "
+         "20px;background:var(--btn);color:#fff;border-radius:10px;font-weight:"
+         "600;font-size:1rem;border:none;cursor:pointer;text-decoration:none;"
+         "transition:all .2s}"
+         ".btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px "
+         "rgba(35,134,54,.4)}"
+         ".foot{margin-top:20px;font-size:.75rem;color:var(--dim)}"
+         ".foot a{color:var(--accent);text-decoration:none}"
+         "</style></head><body><div class='c'>"));
+
+  // 2. Custom Content / Default Content
+  if (storage.config.useCustomPortal && storage.hasCustomPortalHTML()) {
+    // Use Iframe for isolation
+    // The iframe points to /content which serves the raw HTML
+    send("<iframe src='/content' style='width:100%;height:400px;border:none;' "
+         "title='Content'></iframe>");
+  } else {
+    // Inject Default Content
+    String content =
+        "<div class='logo'>⚡</div>"
+        "<h1>" +
+        String(storage.config.advertisingHeadline) +
+        "</h1>"
+        "<p class='desc'>" +
+        String(storage.config.advertisingDescription) +
+        "</p>"
+        "<div class='f'>"
+        "<div><span>📡</span> 50+ fake WiFi networks</div>"
+        "<div><span>🌐</span> Customizable captive portal</div>"
+        "<div><span>齿</span> Web-based admin panel</div>" // gear icon
+        "</div>";
+    send(content);
+  }
+
+  // 3. Fixed Button & Footer
+  // Deep Link Logic
+  String currentSSID = String(storage.config.apName);
+  String deepLink = getDeepLinkUrl(currentSSID);
+  String rUrl =
+      (deepLink.length() > 0) ? deepLink : String(storage.config.redirectUrl);
+  if (rUrl.length() == 0)
+    rUrl = "https://google.com";
+
+  // Escape quotes in URL just in case
+  String safeUrl = rUrl;
+  safeUrl.replace("\"", "&quot;");
+  safeUrl.replace("'", "\\'");
+
+  send("<a href='#' class='btn' id='btn' onclick=\"connect('" + safeUrl +
+       "')\">" + String(storage.config.buttonText) + "</a>");
+  send("</div>"); // Close card
+
+  // Attribution Footer
+  send("<footer class='foot'>Made with ❤️ by <a "
+       "href='https://github.com/John-Varghese-EH'>John-Varghese-EH</a></"
+       "footer>");
+
+  // Script
+  send(F("<script>"
+         "function copyToClipboard(text){"
+         "if(navigator.clipboard){"
+         "navigator.clipboard.writeText(text).catch(function(err){"
+         "fallbackCopyTextToClipboard(text);});"
+         "}else{fallbackCopyTextToClipboard(text);}"
+         "}"
+         "function fallbackCopyTextToClipboard(text){"
+         "var textArea=document.createElement('textarea');"
+         "textArea.value=text;"
+         "textArea.style.top='0';textArea.style.left='0';textArea.style."
+         "position='fixed';"
+         "document.body.appendChild(textArea);"
+         "textArea.focus();textArea.select();"
+         "try{document.execCommand('copy');}catch(err){}"
+         "document.body.removeChild(textArea);"
+         "}"
+         "function connect(url){"
+         // Copy to clipboard with fallback
+         "copyToClipboard(url);"
+         // Trigger Disconnect (Switch to Data)
+         "fetch('/disconnect').catch(e=>{});"
+         // Change button text temporarily
+         "document.getElementById('btn').innerText='Opening...';"
+         // Redirect with small delay
+         "setTimeout(function(){window.location.href=url;},500);"
+         "}"
+         "</script></body></html>"));
+
+  server.sendContent("");
+}
+
+void CaptivePortal::handleCustomContent() {
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "0");
+
+  if (storage.hasCustomPortalHTML()) {
+    server.send(200, "text/html", storage.loadCustomPortalHTML());
+  } else {
+    server.send(404, "text/plain", "No Content");
+  }
 }
 
 void CaptivePortal::handleNotFound() {
@@ -202,52 +438,55 @@ void CaptivePortal::handleNotFound() {
   server.send(302, "text/plain", "");
 }
 
-// ===== Helper for Captive Portal Headers =====
-// Adds headers that signal to devices this is a captive portal,
-// forcing the sign-in popup to open automatically
-void CaptivePortal::addCaptivePortalHeaders() {
+// ===== Platform-Specific Captive Portal Handlers =====
+// Return 302 redirect to trigger sign-in popup on all platforms
+
+// Apple iOS/macOS - expects specific success page
+// Returning redirect triggers the sign-in popup
+void CaptivePortal::handleCaptiveApple() {
+  server.sendHeader("Location", String("http://192.168.4.1/"), true);
   server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   server.sendHeader("Pragma", "no-cache");
   server.sendHeader("Expires", "0");
-  server.sendHeader("X-Captive-Portal", "true");
-  server.sendHeader("Connection", "close");
-}
-
-// ===== Platform-Specific Captive Portal Handlers =====
-// All handlers serve the portal HTML directly to trigger the sign-in popup
-
-// Apple iOS/macOS - expects specific success page
-// Returning our portal page triggers the sign-in popup
-void CaptivePortal::handleCaptiveApple() {
-  addCaptivePortalHeaders();
-  server.send(200, "text/html", portal_html);
+  server.send(302, "text/html", "");
 }
 
 // Android - expects HTTP 204 No Content
-// Returning our portal page triggers the sign-in popup
+// Returning redirect triggers the sign-in popup
 void CaptivePortal::handleCaptiveAndroid() {
-  addCaptivePortalHeaders();
-  server.send(200, "text/html", portal_html);
+  server.sendHeader("Location", String("http://192.168.4.1/"), true);
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "0");
+  server.send(302, "text/plain", "");
 }
 
-// Windows 10/11 - expects specific test response
-// Returning our portal page triggers the sign-in popup
+// Windows 10/11 - expects "Microsoft Connect Test" or "Microsoft NCSI"
+// Returning redirect triggers the sign-in popup
 void CaptivePortal::handleCaptiveWindows() {
-  addCaptivePortalHeaders();
-  server.send(200, "text/html", portal_html);
+  server.sendHeader("Location", String("http://192.168.4.1/"), true);
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "0");
+  server.send(302, "text/plain", "");
 }
 
 // Firefox - expects "success\n"
-// Returning our portal page triggers captive portal notification
+// Returning redirect triggers captive portal notification
 void CaptivePortal::handleCaptiveFirefox() {
-  addCaptivePortalHeaders();
-  server.send(200, "text/html", portal_html);
+  server.sendHeader("Location", String("http://192.168.4.1/"), true);
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.send(302, "text/plain", "");
 }
 
 // Legacy handler kept for compatibility
 void CaptivePortal::handleCaptivePortal() {
-  addCaptivePortalHeaders();
-  server.send(200, "text/html", portal_html);
+  server.sendHeader("Location", String("http://192.168.4.1/"), true);
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "0");
+  server.send(302, "text/plain", "");
 }
 
 // Admin Handlers
@@ -257,6 +496,10 @@ void CaptivePortal::handleAdmin() {
     return server.requestAuthentication();
   }
   addSecurityHeaders();
+  // Prevent browser caching to fix blank page after login
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "0");
   server.send(200, "text/html", admin_html);
 }
 
@@ -265,70 +508,144 @@ void CaptivePortal::handleGetData() {
     return server.requestAuthentication();
   }
   addSecurityHeaders();
-  String json = "{";
-  json += "\"uptime\":" + String(millis() / 1000) + ",";
-  json += "\"clientCount\":" + String(WiFi.softAPgetStationNum()) + ",";
-  json += "\"wpa2\":" + String(storage.config.wpa2 ? "true" : "false") + ",";
-  json += "\"appendSpaces\":" +
-          String(storage.config.appendSpaces ? "true" : "false") + ",";
-  json += json +=
-      "\"enableBLE\":" + String(storage.config.enableBLE ? "true" : "false") +
-      ",";
-  json += "\"beaconInterval\":" + String(storage.config.beaconInterval) + ",";
+
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "application/json", "");
+
+  auto send = [&](String s) { server.sendContent(s); };
+
+  send("{");
+  send("\"uptime\":");
+  send(String(millis() / 1000));
+  send(",");
+  send("\"freeHeap\":");
+  send(String(ESP.getFreeHeap()));
+  send(",");
+#ifdef ESP32
+  send("\"clientCount\":");
+  send(String(WiFi.softAPgetStationNum()));
+  send(",");
+#else
+  send("\"clientCount\":");
+  send(String(WiFi.softAPgetStationNum()));
+  send(",");
+#endif
+  send("\"wpa2\":");
+  send(storage.config.wpa2 ? "true" : "false");
+  send(",");
+  send("\"appendSpaces\":");
+  send(storage.config.appendSpaces ? "true" : "false");
+  send(",");
+  send("\"enableBLE\":");
+  send(storage.config.enableBLE ? "true" : "false");
+  send(",");
+  send("\"beaconInterval\":");
+  send(String(storage.config.beaconInterval));
+  send(",");
 
   // New Fields
-  json += "\"adminUser\":\"" + String(storage.config.adminUser) + "\",";
-  json += "\"adminPass\":\"" + String(storage.config.adminPass) + "\",";
-  json += "\"redirectUrl\":\"" + String(storage.config.redirectUrl) + "\",";
-  json += "\"advertisingHeadline\":\"" +
-          String(storage.config.advertisingHeadline) + "\",";
-  json += "\"advertisingDescription\":\"" +
-          String(storage.config.advertisingDescription) + "\",";
-  json += "\"buttonText\":\"" + String(storage.config.buttonText) + "\",";
-  json +=
-      "\"autoRedirectDelay\":" + String(storage.config.autoRedirectDelay) + ",";
-  json += "\"apName\":\"" + String(storage.config.apName) + "\",";
-  json +=
-      "\"hideAP\":" + String(storage.config.hideAP ? "true" : "false") + ",";
+  send("\"adminUser\":\"");
+  send(storage.config.adminUser);
+  send("\",");
+  send("\"adminPass\":\"");
+  send(storage.config.adminPass);
+  send("\",");
+  send("\"redirectUrl\":\"");
+  send(storage.config.redirectUrl);
+  send("\",");
+  send("\"advertisingHeadline\":\"");
+  send(storage.config.advertisingHeadline);
+  send("\",");
+  send("\"advertisingDescription\":\"");
+  send(storage.config.advertisingDescription);
+  send("\",");
+  send("\"buttonText\":\"");
+  send(storage.config.buttonText);
+  send("\",");
+  send("\"autoRedirectDelay\":");
+  send(String(storage.config.autoRedirectDelay));
+  send(",");
+  send("\"apName\":\"");
+  send(storage.config.apName);
+  send("\",");
+  send("\"hideAP\":");
+  send(storage.config.hideAP ? "true" : "false");
+  send(",");
 
   // Advanced settings
-  json += "\"wifiChannel\":" + String(storage.config.wifiChannel) + ",";
-  json += "\"randomizeMAC\":" +
-          String(storage.config.randomizeMAC ? "true" : "false") + ",";
+  send("\"wifiChannel\":");
+  send(String(storage.config.wifiChannel));
+  send(",");
+  send("\"randomizeMAC\":");
+  send(storage.config.randomizeMAC ? "true" : "false");
+  send(",");
+  send("\"useCustomPortal\":");
+  send(storage.config.useCustomPortal ? "true" : "false");
+  send(",");
 
-  json += "\"ssidCount\":" + String(storage.ssids.size()) + ",";
+  send("\"ssidCount\":");
+  send(String(storage.ssids.size()));
+  send(",");
 
-  json += "\"ssids\":\"";
+  // Stream SSIDs to save RAM
+  send("\"ssids\":\"");
   for (size_t i = 0; i < storage.ssids.size(); i++) {
     String s = storage.ssids[i];
-    s.replace("\n", "\\n");  // Escape newlines
-    s.replace("\"", "\\\""); // Escape quotes
-    json += s;
-    if (i < storage.ssids.size() - 1)
-      json += "\\n";
-  }
-  json += "\"";
+    s.replace("\n", "\\n");
+    s.replace("\"", "\\\"");
+    s.replace("\\", "\\\\"); // Escape backslashes too
 
-  json += "}";
-  server.send(200, "application/json", json);
+    if (i > 0)
+      send("\\n");
+    send(s);
+  }
+  send("\"");
+
+  send("}");
+  server.sendContent("");
 }
 
+// Stream public data to save RAM
+// Stream public data to save RAM
 void CaptivePortal::handlePublicData() {
-  String json = "{";
-  json += "\"advertisingHeadline\":\"" +
-          String(storage.config.advertisingHeadline) + "\",";
-  json += "\"advertisingDescription\":\"" +
-          String(storage.config.advertisingDescription) + "\",";
-  json += "\"buttonText\":\"" + String(storage.config.buttonText) + "\",";
-  json +=
-      "\"autoRedirectDelay\":" + String(storage.config.autoRedirectDelay) + ",";
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "application/json", "");
 
-  String rUrl = String(storage.config.redirectUrl);
+  auto send = [&](String s) { server.sendContent(s); };
+
+  send("{");
+  send("\"advertisingHeadline\":\"");
+  send(storage.config.advertisingHeadline);
+  send("\",");
+  send("\"advertisingDescription\":\"");
+  send(storage.config.advertisingDescription);
+  send("\",");
+  send("\"buttonText\":\"");
+  send(storage.config.buttonText);
+  send("\",");
+  send("\"autoRedirectDelay\":");
+  send(String(storage.config.autoRedirectDelay));
+  send(",");
+
+  // Check for Deep Link (Custom URL for current AP Name)
+  String currentSSID = String(storage.config.apName);
+  String deepLink = getDeepLinkUrl(currentSSID);
+
+  String rUrl;
+  if (deepLink.length() > 0) {
+    rUrl = deepLink;
+  } else {
+    rUrl = String(storage.config.redirectUrl);
+  }
+
   if (rUrl.length() == 0)
     rUrl = "https://google.com";
-  json += "\"redirectUrl\":\"" + rUrl + "\"";
-  json += "}";
-  server.send(200, "application/json", json);
+
+  send("\"redirectUrl\":\"");
+  send(rUrl);
+  send("\"");
+  send("}");
+  server.sendContent("");
 }
 
 void CaptivePortal::handleSaveConfig() {
@@ -337,12 +654,18 @@ void CaptivePortal::handleSaveConfig() {
   }
   addSecurityHeaders();
 
+  // Safety check
+  if (ESP.getFreeHeap() < 2000) {
+    server.send(503, "text/plain", "Low memory");
+    return;
+  }
+
   if (!server.hasArg("data")) {
     server.send(400, "text/plain", "Missing data");
     return;
   }
 
-  String data = server.arg("data");
+  const String &data = server.arg("data");
 
   // Simple manual parsing to avoid JSON library dependency
   storage.config.wpa2 = data.indexOf("\"wpa2\":true") > 0;
@@ -415,6 +738,9 @@ void CaptivePortal::handleSaveConfig() {
   // Parse boolean: randomizeMAC
   storage.config.randomizeMAC = data.indexOf("\"randomizeMAC\":true") > 0;
 
+  // Parse boolean: useCustomPortal
+  storage.config.useCustomPortal = data.indexOf("\"useCustomPortal\":true") > 0;
+
   storage.saveConfig();
   server.send(200, "text/plain", "Config Saved! Reboot to apply changes.");
 }
@@ -425,12 +751,25 @@ void CaptivePortal::handleSaveSSIDs() {
   }
   addSecurityHeaders();
 
+  // Safety check: ensure we have enough RAM to process this
+  if (ESP.getFreeHeap() < 5000) {
+    server.send(503, "text/plain", "Device low on memory, please reboot");
+    return;
+  }
+
   if (!server.hasArg("ssids")) {
     server.send(400, "text/plain", "Missing ssids");
     return;
   }
 
-  String ssids = server.arg("ssids");
+  // Use reference to avoid copying valid data
+  const String &ssids = server.arg("ssids");
+
+  if (ssids.length() > 20000) {
+    server.send(413, "text/plain", "SSID list too large");
+    return;
+  }
+
   storage.saveSSIDs(ssids);
   server.send(200, "text/plain",
               "SSIDs Saved (" + String(storage.ssids.size()) + ")");
@@ -518,46 +857,58 @@ void CaptivePortal::handleExportConfig() {
   }
   addSecurityHeaders();
 
-  String json = "{";
-  json += "\"wpa2\":" + String(storage.config.wpa2 ? "true" : "false") + ",";
-  json += "\"appendSpaces\":" +
-          String(storage.config.appendSpaces ? "true" : "false") + ",";
-  json +=
-      "\"enableBLE\":" + String(storage.config.enableBLE ? "true" : "false") +
-      ",";
-  json += "\"beaconInterval\":" + String(storage.config.beaconInterval) + ",";
-  json += "\"adminUser\":\"" + String(storage.config.adminUser) + "\",";
-  json += "\"adminPass\":\"" + String(storage.config.adminPass) + "\",";
-  json += "\"advertisingHeadline\":\"" +
-          String(storage.config.advertisingHeadline) + "\",";
-  json += "\"advertisingDescription\":\"" +
-          String(storage.config.advertisingDescription) + "\",";
-  json += "\"buttonText\":\"" + String(storage.config.buttonText) + "\",";
-  json += "\"redirectUrl\":\"" + String(storage.config.redirectUrl) + "\",";
-  json +=
-      "\"autoRedirectDelay\":" + String(storage.config.autoRedirectDelay) + ",";
-  json += "\"apName\":\"" + String(storage.config.apName) + "\",";
-  json +=
-      "\"hideAP\":" + String(storage.config.hideAP ? "true" : "false") + ",";
-  json += "\"wifiChannel\":" + String(storage.config.wifiChannel) + ",";
-  json += "\"randomizeMAC\":" +
-          String(storage.config.randomizeMAC ? "true" : "false") + ",";
+  server.sendHeader("Content-Disposition",
+                    "attachment; filename=\"beacon_spam_config.json\"");
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "application/json", "");
 
-  // Include SSIDs
-  json += "\"ssids\":\"";
+  // Helper to stream chunks
+  auto send = [&](String s) { server.sendContent(s); };
+
+  send("{");
+  send("\"wpa2\":" + String(storage.config.wpa2 ? "true" : "false") + ",");
+  send("\"appendSpaces\":" +
+       String(storage.config.appendSpaces ? "true" : "false") + ",");
+  send("\"enableBLE\":" + String(storage.config.enableBLE ? "true" : "false") +
+       ",");
+  send("\"beaconInterval\":" + String(storage.config.beaconInterval) + ",");
+
+  send("\"adminUser\":\"" + String(storage.config.adminUser) + "\",");
+  send("\"adminPass\":\"" + String(storage.config.adminPass) + "\",");
+
+  send("\"advertisingHeadline\":\"" +
+       String(storage.config.advertisingHeadline) + "\",");
+  send("\"advertisingDescription\":\"" +
+       String(storage.config.advertisingDescription) + "\",");
+  send("\"buttonText\":\"" + String(storage.config.buttonText) + "\",");
+  send("\"redirectUrl\":\"" + String(storage.config.redirectUrl) + "\",");
+  send("\"autoRedirectDelay\":" + String(storage.config.autoRedirectDelay) +
+       ",");
+  send("\"apName\":\"" + String(storage.config.apName) + "\",");
+  send("\"hideAP\":" + String(storage.config.hideAP ? "true" : "false") + ",");
+  send("\"wifiChannel\":" + String(storage.config.wifiChannel) + ",");
+  send("\"randomizeMAC\":" +
+       String(storage.config.randomizeMAC ? "true" : "false") + ",");
+  send("\"useCustomPortal\":" +
+       String(storage.config.useCustomPortal ? "true" : "false") + ",");
+
+  // Stream SSIDs
+  send("\"ssids\":\"");
   for (size_t i = 0; i < storage.ssids.size(); i++) {
     String s = storage.ssids[i];
-    s.replace("\n", "\\n");
+    // Escape quotes and backslashes in SSIDs
+    s.replace("\\", "\\\\");
     s.replace("\"", "\\\"");
-    json += s;
-    if (i < storage.ssids.size() - 1)
-      json += "\\n";
-  }
-  json += "\"}";
+    s.replace("\n", "\\n");
 
-  server.sendHeader("Content-Disposition",
-                    "attachment; filename=\"beacon_config.json\"");
-  server.send(200, "application/json", json);
+    if (i > 0)
+      send("\\n");
+    send(s);
+  }
+  send("\""); // End ssids string
+
+  send("}");              // End JSON
+  server.sendContent(""); // End of stream
 }
 
 void CaptivePortal::handleImportConfig() {
@@ -566,13 +917,19 @@ void CaptivePortal::handleImportConfig() {
   }
   addSecurityHeaders();
 
+  // Safety check
+  if (ESP.getFreeHeap() < 5000) {
+    server.send(503, "text/plain", "Low memory");
+    return;
+  }
+
   if (!server.hasArg("data")) {
     server.send(400, "text/plain", "Missing data");
     return;
   }
 
   // This uses the same parsing logic as saveConfig
-  String data = server.arg("data");
+  const String &data = server.arg("data");
 
   // Reuse the extractStr lambda pattern
   auto extractStr = [&](const char *key, char *dest, size_t len) {
@@ -638,6 +995,7 @@ void CaptivePortal::handleImportConfig() {
   }
 
   storage.config.randomizeMAC = data.indexOf("\"randomizeMAC\":true") > 0;
+  storage.config.useCustomPortal = data.indexOf("\"useCustomPortal\":true") > 0;
 
   // Parse and save SSIDs
   int ssidIdx = data.indexOf("\"ssids\":\"");
@@ -653,4 +1011,60 @@ void CaptivePortal::handleImportConfig() {
 
   storage.saveConfig();
   server.send(200, "text/plain", "Config Imported! Reboot to apply changes.");
+}
+
+// ===== Portal HTML Editor Handlers =====
+
+void CaptivePortal::handleGetPortalHTML() {
+  if (!authenticateAdmin()) {
+    return server.requestAuthentication();
+  }
+  addSecurityHeaders();
+
+  // Return custom HTML if exists, otherwise return default
+  String html;
+  if (storage.hasCustomPortalHTML()) {
+    html = storage.loadCustomPortalHTML();
+  } else {
+    html = portal_html;
+  }
+  server.send(200, "text/html", html);
+}
+
+void CaptivePortal::handleSavePortalHTML() {
+  if (!authenticateAdmin()) {
+    return server.requestAuthentication();
+  }
+  addSecurityHeaders();
+
+  if (ESP.getFreeHeap() < 5000) {
+    server.send(503, "text/plain", "Low memory");
+    return;
+  }
+
+  if (!server.hasArg("html")) {
+    server.send(400, "text/plain", "Missing html parameter");
+    return;
+  }
+
+  const String &html = server.arg("html");
+
+  // Limit size to prevent memory issues (8KB max)
+  if (html.length() > 8192) {
+    server.send(400, "text/plain", "HTML too large (max 8KB)");
+    return;
+  }
+
+  storage.saveCustomPortalHTML(html);
+  server.send(200, "text/plain", "Portal HTML saved!");
+}
+
+void CaptivePortal::handleResetPortalHTML() {
+  if (!authenticateAdmin()) {
+    return server.requestAuthentication();
+  }
+  addSecurityHeaders();
+
+  storage.deleteCustomPortalHTML();
+  server.send(200, "text/plain", "Portal HTML reset to default!");
 }

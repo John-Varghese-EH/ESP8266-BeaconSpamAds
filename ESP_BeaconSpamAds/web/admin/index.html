@@ -15,6 +15,7 @@
     <strong>Status:</strong> <span id="statusText">Running</span><br>
     <strong>SSIDs:</strong> <span id="ssidCount">...</span> |
     <strong>Clients:</strong> <span id="clientCount">...</span> |
+    <strong>RAM:</strong> <span id="freeHeap">...</span> |
     <strong>Uptime:</strong> <span id="uptime">...</span>s
   </div>
 
@@ -80,17 +81,18 @@
     <div class="section-title">SSID List</div>
     <p style="color: var(--text-secondary); margin: 0 0 10px 0; font-size: 0.9rem;">One SSID per line. Max 32 characters
       each.</p>
-    <div style="margin-bottom: 10px;">
-      <button type="button" onclick="generateRandomSSIDs()" style="font-size: 0.85rem; padding: 6px 12px;">🎲 Generate
-        Random</button>
-      <button type="button" onclick="loadPreset('funny')" style="font-size: 0.85rem; padding: 6px 12px;">😂
-        Funny</button>
-      <button type="button" onclick="loadPreset('scary')" style="font-size: 0.85rem; padding: 6px 12px;">👻
-        Scary</button>
-      <button type="button" onclick="loadPreset('memes')" style="font-size: 0.85rem; padding: 6px 12px;">🐸
-        Memes</button>
+    <p style="color: var(--accent); margin: 0 0 10px 0; font-size: 0.85rem;">🔗 <strong>Deep Links:</strong> Add custom
+      URL with <code>SSID|https://url.com</code></p>
+    <div class="preset-grid">
+      <button type="button" class="preset-btn" onclick="generateRandomSSIDs()">🎲 Random</button>
+      <button type="button" class="preset-btn" onclick="loadPreset('funny')">😂 Funny</button>
+      <button type="button" class="preset-btn" onclick="loadPreset('scary')">👻 Scary</button>
+      <button type="button" class="preset-btn" onclick="loadPreset('memes')">🐸 Memes</button>
+      <button type="button" class="preset-btn" onclick="loadPreset('pop_culture')">📺 Pop Culture</button>
+      <button type="button" class="preset-btn" onclick="loadPreset('trolling')">😈 Trolling</button>
     </div>
-    <textarea id="ssidList" placeholder="FBI Surveillance Van&#10;Free WiFi&#10;Definitely Not Malware"></textarea>
+    <textarea id="ssidList"
+      placeholder="FBI Surveillance Van&#10;Free WiFi|https://example.com&#10;Starbucks Guest"></textarea>
     <br>
     <button type="button" onclick="saveSSIDs()">💾 Save SSIDs</button>
   </div>
@@ -103,6 +105,27 @@
     <button type="button" onclick="exportConfig()">📤 Export Config</button>
     <button type="button" onclick="document.getElementById('importFile').click()">📥 Import Config</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
+  </div>
+
+  <!-- Portal HTML Editor -->
+  <div class="card">
+    <div class="section-title">Custom Content Editor</div>
+    <p style="color: var(--text-secondary); margin: 0 0 10px 0; font-size: 0.9rem;">
+      Enter your custom HTML content (text, images, ads) to be shown inside the portal.
+      <br>The <strong>Connect Button</strong> and Footer are added automatically.
+    </p>
+    <label><input type="checkbox" id="useCustomPortal"> Enable Custom Content</label>
+    <div class="hint">If disabled, the default logo and features list will be shown.</div>
+    <textarea id="portalHtml" placeholder="<h1>Special Offer!</h1><p>Free WiFi for you...</p>"
+      style="height: 200px; font-family: monospace; font-size: 0.8rem;"></textarea>
+    <div style="margin-top: 10px;">
+      <button type="button" onclick="loadDefaultPortalHTML()">📄 Load Default</button>
+      <button type="button" onclick="savePortalHTML()">💾 Save HTML</button>
+      <button type="button" onclick="resetPortalHTML()" class="danger" style="margin-left: 10px;">🗑️ Reset to
+        Default</button>
+    </div>
+    <div class="hint" style="margin-top: 10px;">💡 After saving, toggle "Use Custom Portal" and save settings for
+      changes to take effect.</div>
   </div>
 
   <!-- Admin Credentials -->
@@ -125,7 +148,7 @@
   </div>
 
   <footer>
-    <strong>ESP8266 Beacon Spam</strong><br>
+    <strong>ESP Beacon Spam</strong><br>
     Made with ❤️ by <a href="https://github.com/John-Varghese-EH" target="_blank">John-Varghese-EH</a>
   </footer>
 

@@ -30,15 +30,55 @@ def minify_css(css: str) -> str:
     return css.strip()
 
 def minify_js(js: str) -> str:
-    # Very basic JS minification
+    """
+    Basic JS minification that preserves functionality.
+    Only removes comments and unnecessary whitespace.
+    """
     lines = js.split('\n')
     result = []
+    in_multiline_comment = False
+    
     for line in lines:
+        # Handle multi-line comments
+        if in_multiline_comment:
+            if '*/' in line:
+                line = line[line.index('*/') + 2:]
+                in_multiline_comment = False
+            else:
+                continue
+        
+        # Remove multi-line comment starts
+        while '/*' in line:
+            start = line.index('/*')
+            if '*/' in line[start:]:
+                end = line.index('*/', start) + 2
+                line = line[:start] + line[end:]
+            else:
+                line = line[:start]
+                in_multiline_comment = True
+                break
+        
         line = line.strip()
-        if not line: continue
-        if line.startswith('//'): continue
-        result.append(line)
-    return ' '.join(result)
+        if not line:
+            continue
+        
+        # Skip single-line comments
+        if line.startswith('//'):
+            continue
+            
+        # Remove inline comments (but be careful with URLs)
+        comment_idx = line.find('//')
+        if comment_idx > 0:
+            # Check it's not inside a string
+            before = line[:comment_idx]
+            if before.count('"') % 2 == 0 and before.count("'") % 2 == 0:
+                line = line[:comment_idx].rstrip()
+        
+        if line:
+            result.append(line)
+    
+    # Join with newlines to preserve statement boundaries
+    return '\n'.join(result)
 
 def minify_html(html: str) -> str:
     html = re.sub(r'<!--(?!\[if).*?-->', '', html, flags=re.DOTALL)

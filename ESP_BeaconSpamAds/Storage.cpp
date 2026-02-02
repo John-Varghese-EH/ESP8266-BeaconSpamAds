@@ -5,6 +5,7 @@ Storage storage;
 
 const char *CONFIG_FILE = "/config.bin";
 const char *SSIDS_FILE = "/ssids.txt";
+const char *PORTAL_FILE = "/portal_custom.html";
 
 void Storage::setup() {
   if (!LittleFS.begin()) {
@@ -13,12 +14,22 @@ void Storage::setup() {
     LittleFS.begin();
   }
 
-  // Check if files exist, else create defaults
+  // Check if config exists
   if (!LittleFS.exists(CONFIG_FILE)) {
+    Serial.println(F("No config found, creating defaults..."));
     createDefaultConfig();
   } else {
     loadConfig();
+    // Validate config version - if mismatch, reset to defaults
+    if (config.configVersion != CONFIG_MAGIC) {
+      Serial.println(F("Config version mismatch, resetting to defaults..."));
+      createDefaultConfig();
+    }
   }
+
+  // Debug: Print the AP name
+  Serial.print(F("AP Name: "));
+  Serial.println(config.apName);
 
   if (!LittleFS.exists(SSIDS_FILE)) {
     createDefaultSSIDs();
@@ -27,6 +38,9 @@ void Storage::setup() {
 }
 
 void Storage::createDefaultConfig() {
+  // Set config version
+  config.configVersion = CONFIG_MAGIC;
+
   config.wpa2 = false;
   config.appendSpaces = true;
   config.beaconInterval = DEFAULT_BEACON_INTERVAL;
@@ -53,7 +67,11 @@ void Storage::createDefaultConfig() {
   config.wifiChannel = 1; // Default channel 1
   config.randomizeMAC = false;
 
+  // Custom Portal
+  config.useCustomPortal = false;
+
   saveConfig();
+  Serial.println(F("Default config created and saved."));
 }
 
 void Storage::loadConfig() {
@@ -123,3 +141,30 @@ void Storage::saveSSIDs(const String &ssidListContent) {
   }
   loadSSIDs(); // Reload vector
 }
+
+// ===== Custom Portal HTML =====
+
+String Storage::loadCustomPortalHTML() {
+  File f = LittleFS.open(PORTAL_FILE, "r");
+  if (!f)
+    return "";
+  String html = f.readString();
+  f.close();
+  return html;
+}
+
+void Storage::saveCustomPortalHTML(const String &html) {
+  File f = LittleFS.open(PORTAL_FILE, "w");
+  if (f) {
+    f.print(html);
+    f.close();
+  }
+}
+
+void Storage::deleteCustomPortalHTML() {
+  if (LittleFS.exists(PORTAL_FILE)) {
+    LittleFS.remove(PORTAL_FILE);
+  }
+}
+
+bool Storage::hasCustomPortalHTML() { return LittleFS.exists(PORTAL_FILE); }

@@ -175,26 +175,25 @@ void BeaconSpam::update() {
         }
       } else {
         uint16_t tmpPacketSize = (packetSize - 32) + parserSsidLen; // calc size
-        uint8_t *tmpPacket = new uint8_t[tmpPacketSize]; // create packet buffer
-        memcpy(&tmpPacket[0], &beaconPacket[0],
-               38 + parserSsidLen);    // copy first half of packet into buffer
-        tmpPacket[37] = parserSsidLen; // update SSID length byte
-        memcpy(&tmpPacket[38 + parserSsidLen], &beaconPacket[70],
+        // Use static buffer instead of new/delete to prevent heap fragmentation
+        memcpy(&packetBuffer[0], &beaconPacket[0],
+               38 + parserSsidLen); // copy first half of packet into buffer
+        packetBuffer[37] = parserSsidLen; // update SSID length byte
+        memcpy(&packetBuffer[38 + parserSsidLen], &beaconPacket[70],
                storage.config.wpa2 ? 39 : 13); // copy second half
 
         // send packet
         for (int k = 0; k < 3; k++) {
 #ifdef ESP32
-          packetCounter += esp_wifi_80211_tx(WIFI_IF_AP, tmpPacket,
+          packetCounter += esp_wifi_80211_tx(WIFI_IF_AP, packetBuffer,
                                              tmpPacketSize, true) == ESP_OK;
 #else
           packetCounter +=
-              wifi_send_pkt_freedom(tmpPacket, tmpPacketSize, 0) == 0;
+              wifi_send_pkt_freedom(packetBuffer, tmpPacketSize, 0) == 0;
 #endif
           delay(1);
         }
-
-        delete[] tmpPacket; // free memory
+        // No delete needed
       }
     }
   }

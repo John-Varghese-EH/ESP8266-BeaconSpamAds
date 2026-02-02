@@ -10,6 +10,7 @@
   --danger: #f85149;
   --danger-hover: #da3633;
   --input-bg: #0d1117;
+  --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .light-mode {
@@ -24,6 +25,7 @@
   --danger: #cf222e;
   --danger-hover: #a40e26;
   --input-bg: #ffffff;
+  --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 * {
@@ -37,7 +39,7 @@ body {
   background: var(--bg);
   color: var(--text);
   padding: 20px;
-  max-width: 600px;
+  max-width: 650px;
   margin: 0 auto;
   transition: background 0.3s, color 0.3s;
 }
@@ -46,6 +48,10 @@ h1 {
   font-size: 1.8rem;
   margin-bottom: 15px;
   text-align: center;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .theme-toggle {
@@ -61,16 +67,18 @@ h1 {
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
+  transition: all 0.2s;
 }
 
 .theme-toggle button:hover {
   background: var(--card-bg);
+  transform: scale(1.02);
 }
 
 .status {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 15px;
   margin-bottom: 15px;
   font-size: 0.9rem;
@@ -80,9 +88,14 @@ h1 {
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 20px;
   margin-bottom: 15px;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: var(--accent);
 }
 
 .section-title {
@@ -106,20 +119,25 @@ input[type="number"] {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--input-bg);
   color: var(--text);
   font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
 }
 
 input[type="checkbox"] {
   margin-right: 8px;
   vertical-align: middle;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
 }
 
 textarea {
@@ -127,17 +145,19 @@ textarea {
   height: 150px;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--input-bg);
   color: var(--text);
-  font-family: monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
   font-size: 0.9rem;
   resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
 }
 
 .hint {
@@ -146,20 +166,63 @@ textarea:focus {
   margin-top: 4px;
 }
 
+/* Preset Button Grid */
+.preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.preset-btn {
+  padding: 8px 14px !important;
+  font-size: 0.85rem !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  margin: 0 !important;
+}
+
+.preset-btn:hover {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: white !important;
+  transform: translateY(-2px);
+}
+
 button {
   padding: 10px 20px;
   background: var(--btn-bg);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   margin-top: 10px;
+  font-weight: 500;
 }
 
 button:hover {
   background: var(--btn-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(35, 134, 54, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+button.secondary:hover {
+  background: var(--card-bg);
+  border-color: var(--accent);
+  box-shadow: none;
 }
 
 button.danger {
@@ -168,6 +231,7 @@ button.danger {
 
 button.danger:hover {
   background: var(--danger-hover);
+  box-shadow: 0 4px 12px rgba(248, 81, 73, 0.3);
 }
 
 footer {
@@ -194,7 +258,7 @@ table {
 
 table th,
 table td {
-  padding: 8px;
+  padding: 10px 8px;
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
@@ -203,4 +267,25 @@ table th {
   color: var(--text-secondary);
   font-weight: 600;
   font-size: 0.85rem;
+}
+
+table tr:hover td {
+  background: rgba(88, 166, 255, 0.05);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card {
+  animation: fadeIn 0.3s ease-out;
 }

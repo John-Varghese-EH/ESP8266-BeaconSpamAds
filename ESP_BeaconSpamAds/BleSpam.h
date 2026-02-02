@@ -9,16 +9,21 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 
-
 class BleSpam {
 public:
   void setup();
   void update();
 
+  void setUrl(String url);
+
 private:
   void setBeacon();
+  void setEddystone();
+
   BLEAdvertising *pAdvertising;
   uint32_t lastRun = 0;
+  String targetUrl = "";
+  bool toggleState = false;
 };
 
 #endif

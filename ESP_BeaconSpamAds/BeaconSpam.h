@@ -25,6 +25,7 @@ private:
   uint32_t packetCounter = 0;
   uint32_t attackTime = 0;
   uint32_t packetRateTime = 0;
+  uint8_t packetBuffer[128];
 };
 
 #endif

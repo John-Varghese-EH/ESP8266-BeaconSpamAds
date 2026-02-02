@@ -16,7 +16,13 @@ const presets = {
         "Silence of the LANs",
         "LAN of Milk and Honey",
         "John Wilkes Bluetooth",
-        "Abraham Linksys"
+        "Abraham Linksys",
+        "Benjamin FrankLAN",
+        "Martin Router King",
+        "LAN Solo",
+        "House LANister",
+        "Winternet Is Coming",
+        "The Promised LAN"
     ],
     scary: [
         "Virus Distribution Center",
@@ -30,7 +36,11 @@ const presets = {
         "Your Data Is Ours",
         "We Can See You",
         "Identity Theft Network",
-        "Credit Card Collector"
+        "Credit Card Collector",
+        "Keylogger Active",
+        "Trojan Downloader",
+        "Ransomware Node 7",
+        "Dark Web Access Point"
     ],
     memes: [
         "Hide Yo Kids Hide Yo WiFi",
@@ -44,22 +54,58 @@ const presets = {
         "The Password Is Password",
         "8Hz WAN IP",
         "Ermahgerd Werfer",
-        "Doge Network Much Secure"
+        "Doge Network Much Secure",
+        "Never Gonna Give You Up",
+        "This Is Fine Network",
+        "Surprised Pikachu WiFi",
+        "One Does Not Simply WiFi"
+    ],
+    pop_culture: [
+        "Hogwarts WiFi",
+        "Stark Industries Guest",
+        "Wayne Manor Network",
+        "Batcave Secure",
+        "The Upside Down WiFi",
+        "Wakanda Forever Net",
+        "Avengers Tower Guest",
+        "Daily Planet WiFi",
+        "Los Pollos Hermanos",
+        "Dunder Mifflin WiFi",
+        "Paddy's Pub Free WiFi",
+        "Central Perk Network",
+        "Pawnee Parks Dept",
+        "Schrute Farms B&B"
+    ],
+    trolling: [
+        "Connecting...",
+        "Searching...",
+        "Free WiFi (Slow)",
+        "WiFi Password: password",
+        "Shout PASSWORD for WiFi",
+        "Click Here for Free WiFi",
+        "This Network Is Cursed",
+        "You Shall Not Pass",
+        "Lag Generator 3000",
+        "Buffering Forever",
+        "1 Bar of Signal",
+        "Disconnecting Soon",
+        "Try Another Network",
+        "Not The WiFi You Want"
     ]
 };
 
 // Random name generators
 const randomWords = {
-    adjectives: ['Free', 'Fast', 'Secure', 'Premium', 'Super', 'Ultra', 'Mega', 'Turbo', 'Pro', 'VIP'],
-    nouns: ['WiFi', 'Internet', 'Network', 'Hotspot', 'Connection', 'Access', 'Link'],
-    places: ['Cafe', 'Hotel', 'Airport', 'Library', 'Office', 'Guest', 'Public', 'Home'],
-    suffixes: ['5G', 'Plus', 'Max', 'Lite', 'Go', 'Now', '2.4GHz', '5GHz']
+    adjectives: ['Free', 'Fast', 'Secure', 'Premium', 'Super', 'Ultra', 'Mega', 'Turbo', 'Pro', 'VIP', 'Best', 'New'],
+    nouns: ['WiFi', 'Internet', 'Network', 'Hotspot', 'Connection', 'Access', 'Link', 'Signal'],
+    places: ['Cafe', 'Hotel', 'Airport', 'Library', 'Office', 'Guest', 'Public', 'Home', 'Shop', 'Mall'],
+    suffixes: ['5G', 'Plus', 'Max', 'Lite', 'Go', 'Now', '2.4GHz', '5GHz', 'Fast', 'Secure']
 };
 
 function generateRandomSSIDs() {
     const ssids = [];
-    for (let i = 0; i < 20; i++) {
-        const type = Math.floor(Math.random() * 3);
+    for (let i = 0; i < 25; i++) {
+        const type = Math.floor(Math.random() * 4);
         let ssid;
         if (type === 0) {
             ssid = randomWords.adjectives[Math.floor(Math.random() * randomWords.adjectives.length)] + ' ' +
@@ -67,11 +113,14 @@ function generateRandomSSIDs() {
         } else if (type === 1) {
             ssid = randomWords.places[Math.floor(Math.random() * randomWords.places.length)] + ' ' +
                 randomWords.nouns[Math.floor(Math.random() * randomWords.nouns.length)];
-        } else {
+        } else if (type === 2) {
             ssid = randomWords.nouns[Math.floor(Math.random() * randomWords.nouns.length)] + ' ' +
                 randomWords.suffixes[Math.floor(Math.random() * randomWords.suffixes.length)];
+        } else {
+            ssid = randomWords.adjectives[Math.floor(Math.random() * randomWords.adjectives.length)] + ' ' +
+                randomWords.places[Math.floor(Math.random() * randomWords.places.length)] + ' WiFi';
         }
-        if (Math.random() > 0.5) ssid += ' ' + Math.floor(Math.random() * 100);
+        if (Math.random() > 0.6) ssid += ' ' + Math.floor(Math.random() * 100);
         ssids.push(ssid);
     }
     document.getElementById('ssidList').value = ssids.join('\n');
@@ -106,6 +155,9 @@ function loadData() {
         .then(data => {
             document.getElementById('ssidCount').innerText = data.ssidCount;
             document.getElementById('uptime').innerText = data.uptime;
+            if (data.freeHeap) {
+                document.getElementById('freeHeap').innerText = Math.round(data.freeHeap / 1024) + 'KB';
+            }
             document.getElementById('clientCount').innerText = data.clientCount;
             document.getElementById('wpa2').checked = data.wpa2;
             document.getElementById('appendSpaces').checked = data.appendSpaces;
@@ -123,6 +175,7 @@ function loadData() {
             // Advanced settings
             document.getElementById('wifiChannel').value = data.wifiChannel || 1;
             document.getElementById('randomizeMAC').checked = data.randomizeMAC || false;
+            document.getElementById('useCustomPortal').checked = data.useCustomPortal || false;
             // Credentials
             document.getElementById('adminUser').value = data.adminUser || 'admin';
             document.getElementById('adminPass').value = '';
@@ -130,6 +183,7 @@ function loadData() {
         .catch(err => console.error('Error loading data:', err));
 
     refreshClients();
+    loadPortalHTML();
 }
 
 function refreshClients() {
@@ -169,7 +223,8 @@ function saveConfig() {
         apName: document.getElementById('apName').value,
         hideAP: document.getElementById('hideAP').checked,
         wifiChannel: parseInt(document.getElementById('wifiChannel').value),
-        randomizeMAC: document.getElementById('randomizeMAC').checked
+        randomizeMAC: document.getElementById('randomizeMAC').checked,
+        useCustomPortal: document.getElementById('useCustomPortal').checked
     };
 
     const formData = new FormData();
@@ -257,3 +312,58 @@ document.addEventListener('DOMContentLoaded', function () {
     applySavedTheme();
     loadData();
 });
+
+// ===== Portal HTML Editor =====
+
+function loadPortalHTML() {
+    fetch('/api/portal_html')
+        .then(res => res.text())
+        .then(html => {
+            document.getElementById('portalHtml').value = html;
+        })
+        .catch(err => console.error('Error loading portal HTML:', err));
+}
+
+function loadDefaultPortalHTML() {
+    // Provide a sample snippet for the new "Current Content" model
+    const sample =
+        '<div class="logo">⚡</div>\n' +
+        '<h1>Your Custom Ad Here</h1>\n' +
+        '<p class="desc">This is a sample layout. You can add images, text, or anything else here!</p>\n' +
+        '<div class="f">\n' +
+        '    <div><span>🔥</span> Great Deal 1</div>\n' +
+        '    <div><span>⭐</span> Great Deal 2</div>\n' +
+        '</div>';
+    document.getElementById('portalHtml').value = sample;
+}
+
+function savePortalHTML() {
+    const html = document.getElementById('portalHtml').value;
+
+    if (html.length > 8192) {
+        alert('HTML is too large! Max 8KB.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('html', html);
+
+    fetch('/api/save_portal_html', { method: 'POST', body: formData })
+        .then(res => res.text())
+        .then(txt => alert(txt))
+        .catch(err => alert('Error saving portal HTML: ' + err));
+}
+
+function resetPortalHTML() {
+    if (!confirm('Reset to default portal HTML? Your custom HTML will be deleted.')) {
+        return;
+    }
+
+    fetch('/api/reset_portal_html', { method: 'POST' })
+        .then(res => res.text())
+        .then(txt => {
+            alert(txt);
+            loadPortalHTML();
+        })
+        .catch(err => alert('Error resetting portal HTML: ' + err));
+}

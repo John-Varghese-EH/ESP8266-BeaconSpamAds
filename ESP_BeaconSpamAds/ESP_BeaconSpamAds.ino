@@ -1,5 +1,5 @@
 /*
-  ESP8266 Beacon Spam & Captive Portal Ads (Merged Version)
+  ESP Beacon Spam & Captive Portal Ads
   -John Varghese (github.com/John-Varghese-EH)
 */
 
@@ -17,7 +17,7 @@ BleSpam bleSpam;
 
 void setup() {
   Serial.begin(115200);
-  Serial.println(F("\n\nESP8266 Beacon Spam & Captive Portal Ads (Merged)\n"));
+  Serial.println(F("\n\nESP Beacon Spam & Captive Portal Ads (J0X)\n"));
 
   storage.setup(); // Initialize FS and Config
 
@@ -27,6 +27,11 @@ void setup() {
 #ifdef ESP32
   if (storage.config.enableBLE) {
     bleSpam.setup();
+    // Set Eddystone URL from config
+    String rUrl = String(storage.config.redirectUrl);
+    if (rUrl.length() == 0)
+      rUrl = "https://google.com";
+    bleSpam.setUrl(rUrl);
   }
 #endif
 

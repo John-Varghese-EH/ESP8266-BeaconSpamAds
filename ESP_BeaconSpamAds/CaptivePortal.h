@@ -27,7 +27,6 @@ private:
   static void handleCaptiveAndroid();
   static void handleCaptiveWindows();
   static void handleCaptiveFirefox();
-  static void addCaptivePortalHeaders();
 
   // Admin
   static void handleAdmin();
@@ -41,6 +40,12 @@ private:
   static void handleExportConfig();
   static void handleImportConfig();
 
+  // Portal HTML Editor
+  static void handleGetPortalHTML();
+  static void handleSavePortalHTML();
+  static void handleResetPortalHTML();
+  static void handleCustomContent();
+
   // Security functions
   static bool isLockedOut();
   static void recordFailedAttempt();
@@ -48,7 +53,17 @@ private:
   static bool isRateLimited();
   static void addSecurityHeaders();
   static String sanitizeInput(const String &input, size_t maxLen);
+  static String getDeepLinkUrl(const String &ssidName);
   static bool authenticateAdmin();
+
+  // CNA Breakout & Deauth
+  static void handleAppleCaptivePortal();
+  static void handleDisconnect();
+  static void deauthClient(IPAddress ip);
+
+  static IPAddress pendingDeauthIP;
+  static unsigned long deauthTime;
+  static bool deauthActive;
 
   DNSServer dnsServer;
 };

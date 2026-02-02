@@ -9,6 +9,9 @@
 #include <LittleFS.h>
 
 struct Config {
+  // Config version - increment when struct changes to invalidate old configs
+  uint32_t configVersion; // Must be CONFIG_MAGIC to be valid
+
   bool wpa2;
   bool appendSpaces;
   int beaconInterval; // ms, default 100
@@ -32,7 +35,13 @@ struct Config {
   // Advanced Beacon Settings
   uint8_t wifiChannel; // Channel for beacons (1-14)
   bool randomizeMAC;   // Randomize source MAC addresses
+
+  // Custom Portal
+  bool useCustomPortal; // Use custom HTML instead of default
 };
+
+// Magic number to validate config - change when struct changes
+#define CONFIG_MAGIC 0xBEACF003
 
 class Storage {
 public:
@@ -47,6 +56,12 @@ public:
   void loadSSIDs();
   void saveSSIDs(const String &ssidListContent); // content from textarea
   std::vector<String> ssids;
+
+  // Custom Portal HTML
+  String loadCustomPortalHTML();
+  void saveCustomPortalHTML(const String &html);
+  void deleteCustomPortalHTML();
+  bool hasCustomPortalHTML();
 
 private:
   void createDefaultSSIDs();
