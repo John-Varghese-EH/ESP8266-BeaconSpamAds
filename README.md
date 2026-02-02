@@ -172,4 +172,4 @@ ESP_BeaconSpamAds/
 
 ## 📄 License
 
-MIT License - See [LICENSE](LICENSE) for details.
+License - See [LICENSE](LICENSE) for details.
