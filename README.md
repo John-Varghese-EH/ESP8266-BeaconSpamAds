@@ -1,4 +1,4 @@
-# ⚡ ESP8266 Beacon Spam & Captive Portal
+# ⚡ ESP Beacon Spam & Captive Portal
 
 ![ESP8266](https://img.shields.io/badge/ESP8266-Supported-green?logo=espressif)
 ![ESP32](https://img.shields.io/badge/ESP32-Supported-green?logo=espressif)
