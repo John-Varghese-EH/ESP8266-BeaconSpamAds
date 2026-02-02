@@ -56,6 +56,7 @@ void Storage::createDefaultConfig() {
   strlcpy(config.advertisingDescription, DEFAULT_DESCRIPTION,
           sizeof(config.advertisingDescription));
   strlcpy(config.buttonText, DEFAULT_BUTTON_TEXT, sizeof(config.buttonText));
+  config.disableButton = false;
   strlcpy(config.redirectUrl, DEFAULT_REDIRECT_URL, sizeof(config.redirectUrl));
   config.autoRedirectDelay = DEFAULT_AUTO_REDIRECT_DELAY;
 

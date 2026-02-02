@@ -304,87 +304,64 @@ void CaptivePortal::handleRoot() {
 
   auto send = [&](String s) { server.sendContent(s); };
 
-  // 1. Header & Styles
-  send(F("<!DOCTYPE html><html lang='en'><head>"
-         "<meta charset='UTF-8'><meta name='viewport' "
-         "content='width=device-width,initial-scale=1'>"
-         "<title>ESP Beacon Spam</title><style>"
-         ":root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--"
-         "dim:#8b949e;--accent:#58a6ff;--btn:linear-gradient(135deg,#238636,#"
-         "2ea043)}"
-         "*{box-sizing:border-box;margin:0;padding:0}"
-         "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe "
-         "UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-"
-         "height:100vh;display:flex;flex-direction:column;justify-content:"
-         "center;align-items:center;padding:20px}"
-         ".c{background:var(--card);border:1px solid "
-         "var(--border);border-radius:16px;padding:30px;max-width:380px;width:"
-         "100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.4)}"
-         ".logo{font-size:40px;margin-bottom:10px}"
-         "h1{font-size:1.4rem;margin-bottom:8px}"
-         ".desc{color:var(--dim);font-size:.9rem;line-height:1.5;margin-bottom:"
-         "18px}"
-         ".f{text-align:left;margin-bottom:18px;padding:10px "
-         "14px;background:rgba(88,166,255,.08);border-radius:8px;border:1px "
-         "solid rgba(88,166,255,.15)}"
-         ".f div{padding:4px 0;font-size:.85rem;color:var(--dim)}"
-         ".f span{margin-right:8px}"
-         ".btn{display:block;width:100%;padding:14px "
-         "20px;background:var(--btn);color:#fff;border-radius:10px;font-weight:"
-         "600;font-size:1rem;border:none;cursor:pointer;text-decoration:none;"
-         "transition:all .2s}"
-         ".btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px "
-         "rgba(35,134,54,.4)}"
-         ".foot{margin-top:20px;font-size:.75rem;color:var(--dim)}"
-         ".foot a{color:var(--accent);text-decoration:none}"
-         "</style></head><body><div class='c'>"));
+  // 1. Header & Styles (Refactored for Full Screen Flex)
+  send(F(
+      "<!DOCTYPE html><html lang='en'><head>"
+      "<meta charset='UTF-8'><meta name='viewport' "
+      "content='width=device-width,initial-scale=1'>"
+      "<title>ESP Beacon Spam</title><style>"
+      ":root{--bg:#000;--card:#161b22;--border:#30363d;--text:#c9d1d9;"
+      "--dim:#8b949e;--accent:#58a6ff;--btn:linear-gradient(135deg,#238636,#"
+      "2ea043)}"
+      "*{box-sizing:border-box;margin:0;padding:0}"
+      "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe "
+      "UI',Roboto,sans-serif;"
+      "background:var(--bg);color:var(--text);height:100vh;width:100vw;"
+      "overflow:hidden;"
+      "display:flex;flex-direction:column}"
+      "iframe{border:none;width:100%;flex:1;background:#fff}" // Iframe takes
+                                                              // remaining space
+      ".foot-bar{background:var(--card);border-top:1px solid "
+      "var(--border);padding:15px;"
+      "display:flex;flex-direction:column;align-items:center;justify-content:"
+      "center;z-index:99}"
+      ".btn{display:block;width:100%;max-width:400px;padding:14px 20px;"
+      "background:var(--btn);color:#fff;border-radius:10px;font-weight:600;"
+      "font-size:1rem;border:none;cursor:pointer;text-decoration:none;text-"
+      "align:center;"
+      "transition:transform .2s,box-shadow .2s}"
+      ".btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px "
+      "rgba(35,134,54,.4)}"
+      ".attr{margin-top:8px;font-size:10px;color:var(--dim)}"
+      ".attr a{color:var(--dim);text-decoration:none}"
+      "</style></head><body>"));
 
-  // 2. Custom Content / Default Content
-  if (storage.config.useCustomPortal && storage.hasCustomPortalHTML()) {
-    // Use Iframe for isolation
-    // The iframe points to /content which serves the raw HTML
-    send("<iframe src='/content' style='width:100%;height:400px;border:none;' "
-         "title='Content'></iframe>");
-  } else {
-    // Inject Default Content
-    String content =
-        "<div class='logo'>⚡</div>"
-        "<h1>" +
-        String(storage.config.advertisingHeadline) +
-        "</h1>"
-        "<p class='desc'>" +
-        String(storage.config.advertisingDescription) +
-        "</p>"
-        "<div class='f'>"
-        "<div><span>📡</span> 50+ fake WiFi networks</div>"
-        "<div><span>🌐</span> Customizable captive portal</div>"
-        "<div><span>齿</span> Web-based admin panel</div>" // gear icon
-        "</div>";
-    send(content);
+  // 2. Iframe Content
+  send(F("<iframe src='/content' title='Portal Content'></iframe>"));
+
+  // 3. Footer / Button (Conditional) - disableButton check
+  bool showFooter = (!storage.config.disableButton);
+
+  if (showFooter) {
+    String currentSSID = String(storage.config.apName);
+    String deepLink = getDeepLinkUrl(currentSSID);
+    String rUrl =
+        (deepLink.length() > 0) ? deepLink : String(storage.config.redirectUrl);
+    if (rUrl.length() == 0)
+      rUrl = "https://google.com";
+
+    String safeUrl = rUrl;
+    safeUrl.replace("\"", "&quot;");
+    safeUrl.replace("'", "\\'");
+
+    send(F("<div class='foot-bar' id='fb'>"));
+    send("<a href='#' class='btn' id='btn' onclick=\"connect('" + safeUrl +
+         "')\">" + String(storage.config.buttonText) + "</a>");
+    send(F("<div class='attr'>Made with ❤️ by <a "
+           "href='https://github.com/John-Varghese-EH'>John-Varghese-EH</a></"
+           "div>"));
+    send(F("</div>"));
   }
-
-  // 3. Fixed Button & Footer
-  // Deep Link Logic
-  String currentSSID = String(storage.config.apName);
-  String deepLink = getDeepLinkUrl(currentSSID);
-  String rUrl =
-      (deepLink.length() > 0) ? deepLink : String(storage.config.redirectUrl);
-  if (rUrl.length() == 0)
-    rUrl = "https://google.com";
-
-  // Escape quotes in URL just in case
-  String safeUrl = rUrl;
-  safeUrl.replace("\"", "&quot;");
-  safeUrl.replace("'", "\\'");
-
-  send("<a href='#' class='btn' id='btn' onclick=\"connect('" + safeUrl +
-       "')\">" + String(storage.config.buttonText) + "</a>");
-  send("</div>"); // Close card
-
-  // Attribution Footer
-  send("<footer class='foot'>Made with ❤️ by <a "
-       "href='https://github.com/John-Varghese-EH'>John-Varghese-EH</a></"
-       "footer>");
 
   // Script
   send(F("<script>"
@@ -424,10 +401,49 @@ void CaptivePortal::handleCustomContent() {
   server.sendHeader("Pragma", "no-cache");
   server.sendHeader("Expires", "0");
 
-  if (storage.hasCustomPortalHTML()) {
-    server.send(200, "text/html", storage.loadCustomPortalHTML());
+  if (storage.config.useCustomPortal && storage.hasCustomPortalHTML()) {
+    File f = LittleFS.open("/portal_custom.html", "r");
+    if (f) {
+      server.streamFile(f, "text/html");
+      f.close();
+    } else {
+      server.send(500, "text/plain", "File Open Error");
+    }
   } else {
-    server.send(404, "text/plain", "No Content");
+    // Default Content (Served inside Iframe)
+    String html =
+        F("<!DOCTYPE html><html><head><meta charset='utf-8'>"
+          "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+          "<style>"
+          ":root{--bg:#0d1117;--card:#161b22;--text:#c9d1d9;--dim:#8b949e;--"
+          "accent:#58a6ff}"
+          "body{font-family:-apple-system,BlinkMacSystemFont,Roboto,sans-serif;"
+          "background:var(--bg);color:var(--text);display:flex;justify-content:"
+          "center;align-items:center;min-height:100vh;margin:0;padding:20px}"
+          ".c{background:var(--card);border:1px solid "
+          "#30363d;border-radius:16px;padding:30px;max-width:380px;width:100%;"
+          "text-align:center}"
+          ".logo{font-size:40px;margin-bottom:10px}"
+          "h1{font-size:1.4rem;margin-bottom:8px}"
+          ".desc{color:var(--dim);font-size:.9rem;line-height:1.5;margin-"
+          "bottom:18px}"
+          ".f{text-align:left;background:rgba(88,166,255,.08);border-radius:"
+          "8px;padding:10px;border:1px solid rgba(88,166,255,.15)}"
+          ".f div{padding:4px 0;font-size:.85rem;color:var(--dim)}"
+          "</style></head><body>"
+          "<div class='c'>"
+          "<div class='logo'>⚡</div><h1>");
+
+    html += String(storage.config.advertisingHeadline);
+    html += F("</h1><p class='desc'>");
+    html += String(storage.config.advertisingDescription);
+    html += F("</p><div class='f'>"
+              "<div><span>📡</span> 50+ fake WiFi networks</div>"
+              "<div><span>🌐</span> Customizable captive portal</div>"
+              "<div><span>⚙️</span> Web-based admin panel</div>"
+              "</div></div></body></html>");
+
+    server.send(200, "text/html", html);
   }
 }
 

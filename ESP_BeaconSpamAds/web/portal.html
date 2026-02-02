@@ -7,7 +7,7 @@
     <title>ESP Beacon Spam</title>
     <style>
         :root {
-            --bg: #0d1117;
+            --bg: #000;
             --card: #161b22;
             --border: #30363d;
             --text: #c9d1d9;
@@ -26,64 +26,35 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
-            min-height: 100vh;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column
+        }
+
+        iframe {
+            border: none;
+            width: 100%;
+            flex: 1;
+            background: #fff
+        }
+
+        .foot-bar {
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            padding: 20px
-        }
-
-        .c {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 30px;
-            max-width: 380px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 16px 48px rgba(0, 0, 0, .4)
-        }
-
-        .logo {
-            font-size: 40px;
-            margin-bottom: 10px
-        }
-
-        h1 {
-            font-size: 1.4rem;
-            margin-bottom: 8px
-        }
-
-        .desc {
-            color: var(--dim);
-            font-size: .9rem;
-            line-height: 1.5;
-            margin-bottom: 18px
-        }
-
-        .f {
-            text-align: left;
-            margin-bottom: 18px;
-            padding: 10px 14px;
-            background: rgba(88, 166, 255, .08);
-            border-radius: 8px;
-            border: 1px solid rgba(88, 166, 255, .15)
-        }
-
-        .f div {
-            padding: 4px 0;
-            font-size: .85rem;
-            color: var(--dim)
-        }
-
-        .f span {
-            margin-right: 8px
+            justify-content: center;
+            z-index: 99
         }
 
         .btn {
             display: block;
             width: 100%;
+            max-width: 400px;
             padding: 14px 20px;
             background: var(--btn);
             color: #fff;
@@ -93,63 +64,73 @@
             border: none;
             cursor: pointer;
             text-decoration: none;
-            transition: all .2s
+            text-align: center;
+            transition: transform .2s, box-shadow .2s
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(35, 134, 54, .4)
+            box-shadow: 0 6px 20px rgba(35, 134, 54, .4)
         }
 
-        .al {
-            margin-top: 18px;
-            font-size: .7rem;
-            color: var(--border)
-        }
-
-        .al a {
-            color: var(--border);
-            text-decoration: none
-        }
-
-        .al a:hover {
+        .attr {
+            margin-top: 8px;
+            font-size: 10px;
             color: var(--dim)
         }
 
-        footer {
-            margin-top: 20px;
-            font-size: .75rem;
-            color: var(--dim)
-        }
-
-        footer a {
-            color: var(--accent);
+        .attr a {
+            color: var(--dim);
             text-decoration: none
         }
     </style>
 </head>
 
 <body>
-    <div class="c">
-        <div class="logo">⚡</div>
-        <h1 id="headline">ESP Beacon Spam</h1>
-        <p class="desc" id="description">Open-source WiFi beacon spammer & captive portal for ESP8266/ESP32</p>
-        <div class="f">
-            <div><span>📡</span> 50+ fake WiFi networks</div>
-            <div><span>🌐</span> Customizable captive portal</div>
-            <div><span>⚙️</span> Web-based admin panel</div>
-            <div><span>📱</span> BLE spam (ESP32)</div>
-        </div>
-        <a class="btn" id="link" href="#">View on GitHub</a>
-        <div class="al"><a href="/admin">⚙️ Admin Panel</a></div>
+    <iframe src="/content" title="Portal Content"></iframe>
+
+    <div class="foot-bar" id="fb">
+        <a href="#" class="btn" id="btn"
+            onclick="connect('https://github.com/John-Varghese-EH/ESP8266-BeaconSpamAds')">Connect</a>
+        <div class="attr">Made with ❤️ by <a href="https://github.com/John-Varghese-EH">John-Varghese-EH</a></div>
     </div>
-    <footer>Made with ❤️ by <a href="https://github.com/John-Varghese-EH">John-Varghese-EH</a></footer>
+
     <script>
+        function copyToClipboard(text) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).catch(function (err) { fallbackCopyTextToClipboard(text); });
+            } else { fallbackCopyTextToClipboard(text); }
+        }
+        function fallbackCopyTextToClipboard(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0"; textArea.style.left = "0"; textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus(); textArea.select();
+            try { document.execCommand('copy'); } catch (err) { }
+            document.body.removeChild(textArea);
+        }
+        function connect(url) {
+            copyToClipboard(url);
+            fetch('/disconnect').catch(e => { });
+            document.getElementById('btn').innerText = 'Opening...';
+            setTimeout(function () { window.location.href = url; }, 500);
+        }
+
+        // Fetch dynamic config
         fetch('/api/public_data').then(r => r.json()).then(d => {
-            if (d.redirectUrl) document.getElementById('link').href = d.redirectUrl;
-            if (d.advertisingHeadline) document.getElementById('headline').textContent = d.advertisingHeadline;
-            if (d.advertisingDescription) document.getElementById('description').textContent = d.advertisingDescription;
-            if (d.buttonText) document.getElementById('link').textContent = d.buttonText;
+            // Button Text
+            if (d.buttonText && d.buttonText !== "0") {
+                document.getElementById('btn').textContent = d.buttonText;
+            } else {
+                // If buttonText is 0 or empty, we generally hide the footer, 
+                // but this static file just mimics the layout.
+            }
+
+            // Redirect URL
+            if (d.redirectUrl) {
+                document.getElementById('btn').onclick = function () { connect(d.redirectUrl); };
+            }
         }).catch(() => { });
     </script>
 </body>

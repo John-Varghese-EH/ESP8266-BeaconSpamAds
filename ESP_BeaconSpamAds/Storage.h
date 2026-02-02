@@ -25,8 +25,9 @@ struct Config {
   char advertisingHeadline[64];     // Main headline
   char advertisingDescription[128]; // Sub-text/description
   char buttonText[32];   // Button label (e.g., "Connect", "Get Offer")
+  bool disableButton;    // Hide button (Full screen iframe)
   char redirectUrl[128]; // Where to redirect on button click
-  int autoRedirectDelay; // Seconds before auto-redirect (0 = disabled)
+  int autoRedirectDelay; // Seconds to wait before auto-redirecting (0=disabled)
 
   // Access Point Settings
   char apName[32]; // Name of the captive portal AP
@@ -41,7 +42,7 @@ struct Config {
 };
 
 // Magic number to validate config - change when struct changes
-#define CONFIG_MAGIC 0xBEACF003
+#define CONFIG_MAGIC 0xBEACF005
 
 class Storage {
 public:

@@ -149,6 +149,28 @@ function applySavedTheme() {
     }
 }
 
+// Apply saved theme
+function applySavedTheme() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('themeBtn').innerText = '🌙 Dark Mode';
+    }
+}
+
+function toggleRedirectInputs() {
+    const isDisabled = document.getElementById('disableButton').checked;
+    const urlInput = document.getElementById('redirectUrl');
+    const delayInput = document.getElementById('autoRedirectDelay');
+
+    urlInput.disabled = isDisabled;
+    delayInput.disabled = isDisabled;
+
+    // Optional: Add visual opacity if standard disabled isn't enough
+    urlInput.style.opacity = isDisabled ? '0.5' : '1';
+    delayInput.style.opacity = isDisabled ? '0.5' : '1';
+}
+
 function loadData() {
     fetch('/api/data')
         .then(res => res.json())
@@ -169,6 +191,7 @@ function loadData() {
             document.getElementById('advertisingHeadline').value = data.advertisingHeadline || '';
             document.getElementById('advertisingDescription').value = data.advertisingDescription || '';
             document.getElementById('buttonText').value = data.buttonText || 'Connect';
+            document.getElementById('disableButton').checked = data.disableButton || false;
             document.getElementById('autoRedirectDelay').value = data.autoRedirectDelay || 0;
             document.getElementById('apName').value = data.apName || 'Free WiFi';
             document.getElementById('hideAP').checked = data.hideAP || false;
@@ -179,6 +202,9 @@ function loadData() {
             // Credentials
             document.getElementById('adminUser').value = data.adminUser || 'admin';
             document.getElementById('adminPass').value = '';
+
+            // Set initial state of inputs
+            toggleRedirectInputs();
         })
         .catch(err => console.error('Error loading data:', err));
 
@@ -219,6 +245,7 @@ function saveConfig() {
         advertisingHeadline: document.getElementById('advertisingHeadline').value,
         advertisingDescription: document.getElementById('advertisingDescription').value,
         buttonText: document.getElementById('buttonText').value,
+        disableButton: document.getElementById('disableButton').checked,
         autoRedirectDelay: parseInt(document.getElementById('autoRedirectDelay').value),
         apName: document.getElementById('apName').value,
         hideAP: document.getElementById('hideAP').checked,
@@ -319,10 +346,26 @@ function loadPortalHTML() {
     fetch('/api/portal_html')
         .then(res => res.text())
         .then(html => {
-            document.getElementById('portalHtml').value = html;
+            const el = document.getElementById('portalHtml');
+            el.value = html;
+            updatePreview(html);
         })
         .catch(err => console.error('Error loading portal HTML:', err));
 }
+
+function updatePreview(html) {
+    const frame = document.getElementById('previewFrame');
+    // We use srcdoc for immediate preview without saving
+    frame.srcdoc = html || '<h3>Preview Area</h3><p>Type above to see changes...</p>';
+}
+
+// Live Preview Listener
+document.getElementById('portalHtml').addEventListener('input', function (e) {
+    updatePreview(e.target.value);
+});
+
+// Disable Button Listener
+document.getElementById('disableButton').addEventListener('change', toggleRedirectInputs);
 
 function loadDefaultPortalHTML() {
     // Provide a sample snippet for the new "Current Content" model

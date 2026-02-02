@@ -50,6 +50,8 @@
     <input type="text" id="advertisingDescription" placeholder="Click below to get exclusive access!">
     <label>Button Text</label>
     <input type="text" id="buttonText" placeholder="Connect Now">
+    <label><input type="checkbox" id="disableButton"> Disable Button (Full Screen Mode)</label>
+    <div class="hint">Check this to hide the footer and make the iframe full screen.</div>
     <label>Redirect URL</label>
     <input type="text" id="redirectUrl" placeholder="https://github.com/John-Varghese-EH">
     <div class="hint">Where users go after clicking the button</div>
@@ -118,6 +120,13 @@
     <div class="hint">If disabled, the default logo and features list will be shown.</div>
     <textarea id="portalHtml" placeholder="<h1>Special Offer!</h1><p>Free WiFi for you...</p>"
       style="height: 200px; font-family: monospace; font-size: 0.8rem;"></textarea>
+
+    <label style="margin-top:15px;display:block;">Main portal raw HTML code</label>
+    <div
+      style="border: 2px dashed var(--border); border-radius: 8px; background: #fff; height: 700px; overflow: hidden; margin-bottom: 10px;">
+      <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin"
+        style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
     <div style="margin-top: 10px;">
       <button type="button" onclick="loadDefaultPortalHTML()">📄 Load Default</button>
       <button type="button" onclick="savePortalHTML()">💾 Save HTML</button>
