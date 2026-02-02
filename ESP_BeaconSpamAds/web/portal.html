@@ -115,6 +115,74 @@
             font-weight: 600;
         }
 
+        .url-fallback {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .url-fallback p {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .url-display {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .url-display input {
+            flex: 1;
+            padding: 8px 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--accent);
+            font-size: 0.85rem;
+            font-family: monospace;
+        }
+
+        .copy-btn {
+            padding: 8px 12px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            opacity: 0.9;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #238636;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
         .admin-link {
             margin-top: 25px;
             font-size: 0.75rem;
@@ -157,7 +225,16 @@
             <div><span>📱</span> BLE spam (ESP32)</div>
         </div>
 
-        <a href="/api/redirect" class="btn" id="connectBtn">View on GitHub</a>
+        <button class="btn" id="connectBtn" onclick="advancedRedirect()">View on GitHub</button>
+
+        <div class="url-fallback" id="urlFallback">
+            <p>📋 Redirect blocked? Copy the link manually:</p>
+            <div class="url-display">
+                <input type="text" id="urlInput" readonly value="">
+                <button class="copy-btn" onclick="copyUrl()">Copy</button>
+            </div>
+        </div>
+
         <div class="countdown" id="countdown">
             Redirecting in <span id="timer">5</span> seconds...
         </div>
@@ -166,14 +243,92 @@
         </div>
     </div>
 
+    <div class="toast" id="toast">✓ Link copied to clipboard!</div>
+
     <footer>
         Made with ❤️ by <a href="https://github.com/John-Varghese-EH" target="_blank">John-Varghese-EH</a>
     </footer>
 
     <script>
+        let redirectUrl = 'https://github.com/John-Varghese-EH/ESP8266-BeaconSpamAds';
+
+        // Show toast notification
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        // Copy URL to clipboard
+        function copyUrl() {
+            const input = document.getElementById('urlInput');
+            input.select();
+            input.setSelectionRange(0, 99999);
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(redirectUrl)
+                    .then(() => showToast('✓ Link copied to clipboard!'))
+                    .catch(() => fallbackCopy());
+            } else {
+                fallbackCopy();
+            }
+        }
+
+        function fallbackCopy() {
+            try {
+                document.execCommand('copy');
+                showToast('✓ Link copied to clipboard!');
+            } catch (e) {
+                showToast('⚠ Please copy manually');
+            }
+        }
+
+        // Advanced redirect with multiple fallback methods
+        function advancedRedirect() {
+            // Show fallback URL immediately in case redirect is blocked
+            document.getElementById('urlFallback').style.display = 'block';
+            document.getElementById('urlInput').value = redirectUrl;
+
+            // Method 1: Try window.open (works best in captive portals)
+            const newWin = window.open(redirectUrl, '_blank');
+            if (newWin) {
+                showToast('✓ Opening in new tab...');
+                return;
+            }
+
+            // Method 2: Try replacing current location
+            try {
+                window.location.replace(redirectUrl);
+                return;
+            } catch (e) { }
+
+            // Method 3: Try setting location.href
+            try {
+                window.location.href = redirectUrl;
+                return;
+            } catch (e) { }
+
+            // Method 4: Try top.location (for iframes)
+            try {
+                if (window.top !== window.self) {
+                    window.top.location.href = redirectUrl;
+                    return;
+                }
+            } catch (e) { }
+
+            // All methods failed - show fallback
+            showToast('⚠ Redirect blocked - copy link below');
+        }
+
+        // Load config and setup auto-redirect
         fetch('/api/public_data')
             .then(res => res.json())
             .then(data => {
+                if (data.redirectUrl) {
+                    redirectUrl = data.redirectUrl;
+                    document.getElementById('urlInput').value = redirectUrl;
+                }
                 if (data.advertisingHeadline) {
                     document.getElementById('headline').innerText = data.advertisingHeadline;
                 }
@@ -197,7 +352,7 @@
                         timerEl.innerText = secs;
                         if (secs <= 0) {
                             clearInterval(interval);
-                            window.location.href = '/api/redirect';
+                            advancedRedirect();
                         }
                     }, 1000);
                 }

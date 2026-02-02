@@ -29,7 +29,7 @@ const bool wpa2 = true;
   "https://github.com/John-Varghese-EH/ESP8266-BeaconSpamAds"
 
 // The headline shown on the captive portal page
-#define DEFAULT_HEADLINE "⚡ ESP8266 Beacon Spam"
+#define DEFAULT_HEADLINE "⚡ ESP Beacon Spam"
 
 // Description text shown below the headline
 #define DEFAULT_DESCRIPTION                                                    \

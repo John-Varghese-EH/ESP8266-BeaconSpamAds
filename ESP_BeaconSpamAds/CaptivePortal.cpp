@@ -202,56 +202,52 @@ void CaptivePortal::handleNotFound() {
   server.send(302, "text/plain", "");
 }
 
-// ===== Platform-Specific Captive Portal Handlers =====
-
-// Apple iOS/macOS - expects
-// "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"
-// Returning anything else triggers the sign-in popup
-void CaptivePortal::handleCaptiveApple() {
-  // Send a redirect - NOT the success page Apple expects
-  server.sendHeader("Location", String("http://192.168.4.1/"), true);
+// ===== Helper for Captive Portal Headers =====
+// Adds headers that signal to devices this is a captive portal,
+// forcing the sign-in popup to open automatically
+void CaptivePortal::addCaptivePortalHeaders() {
   server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   server.sendHeader("Pragma", "no-cache");
   server.sendHeader("Expires", "0");
-  server.send(302, "text/html", "");
+  server.sendHeader("X-Captive-Portal", "true");
+  server.sendHeader("Connection", "close");
+}
+
+// ===== Platform-Specific Captive Portal Handlers =====
+// All handlers serve the portal HTML directly to trigger the sign-in popup
+
+// Apple iOS/macOS - expects specific success page
+// Returning our portal page triggers the sign-in popup
+void CaptivePortal::handleCaptiveApple() {
+  addCaptivePortalHeaders();
+  server.send(200, "text/html", portal_html);
 }
 
 // Android - expects HTTP 204 No Content
-// Returning 302 redirect triggers the sign-in popup
+// Returning our portal page triggers the sign-in popup
 void CaptivePortal::handleCaptiveAndroid() {
-  server.sendHeader("Location", String("http://192.168.4.1/"), true);
-  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  server.sendHeader("Pragma", "no-cache");
-  server.sendHeader("Expires", "0");
-  server.send(302, "text/plain", "");
+  addCaptivePortalHeaders();
+  server.send(200, "text/html", portal_html);
 }
 
-// Windows 10/11 - expects "Microsoft Connect Test" or "Microsoft NCSI"
-// Returning redirect triggers the sign-in popup
+// Windows 10/11 - expects specific test response
+// Returning our portal page triggers the sign-in popup
 void CaptivePortal::handleCaptiveWindows() {
-  server.sendHeader("Location", String("http://192.168.4.1/"), true);
-  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  server.sendHeader("Pragma", "no-cache");
-  server.sendHeader("Expires", "0");
-  server.send(302, "text/plain", "");
+  addCaptivePortalHeaders();
+  server.send(200, "text/html", portal_html);
 }
 
 // Firefox - expects "success\n"
-// Returning redirect triggers captive portal notification
+// Returning our portal page triggers captive portal notification
 void CaptivePortal::handleCaptiveFirefox() {
-  server.sendHeader("Location", String("http://192.168.4.1/"), true);
-  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  server.sendHeader("Pragma", "no-cache");
-  server.send(302, "text/plain", "");
+  addCaptivePortalHeaders();
+  server.send(200, "text/html", portal_html);
 }
 
 // Legacy handler kept for compatibility
 void CaptivePortal::handleCaptivePortal() {
-  server.sendHeader("Location", String("http://192.168.4.1/"), true);
-  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  server.sendHeader("Pragma", "no-cache");
-  server.sendHeader("Expires", "0");
-  server.send(302, "text/plain", "");
+  addCaptivePortalHeaders();
+  server.send(200, "text/html", portal_html);
 }
 
 // Admin Handlers

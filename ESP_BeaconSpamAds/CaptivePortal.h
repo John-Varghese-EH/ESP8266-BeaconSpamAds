@@ -27,6 +27,7 @@ private:
   static void handleCaptiveAndroid();
   static void handleCaptiveWindows();
   static void handleCaptiveFirefox();
+  static void addCaptivePortalHeaders();
 
   // Admin
   static void handleAdmin();
