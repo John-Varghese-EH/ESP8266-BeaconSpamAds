@@ -1,8 +1,8 @@
 # ⚡ ESP8266 Beacon Spam & Captive Portal
 
-![ESP8266](https://img.shields.io/badge/ESP8266-Supported-blue?logo=espressif)
-![ESP32](https://img.shields.io/badge/ESP32-Supported-blue?logo=espressif)
-![License](https://img.shields.io/badge/License-MIT-green)
+![ESP8266](https://img.shields.io/badge/ESP8266-Supported-green?logo=espressif)
+![ESP32](https://img.shields.io/badge/ESP32-Supported-green?logo=espressif)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 
 A powerful WiFi beacon spammer and captive portal for ESP8266/ESP32. Broadcasts fake SSIDs, captures users with a customizable captive portal, and redirects them anywhere you want.
 
